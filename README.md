@@ -1,2 +1,1 @@
 # Webserv
-## getting started
