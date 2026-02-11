@@ -1,5 +1,6 @@
 #include "../includes/Server.hpp"
 #include "../includes/utils.hpp"
+#include "../includes/Request.hpp"
 #include <arpa/inet.h>
 #include <stdexcept>
 
@@ -93,14 +94,8 @@ void Server::_acceptNewConnection() {
     
     int clientSocket = accept(_serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
     
-    if (clientSocket < 0) {
-        // EAGAIN or EWOULDBLOCK means no connection available (non-blocking)
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return;
-        }
-        logError("Failed to accept connection");
+    if (clientSocket < 0)
         return;
-    }
     
     // Set client socket to non-blocking
     _setNonBlocking(clientSocket);
@@ -142,6 +137,14 @@ void Server::_handleClient(int fd) {
             // Check if request is complete
             if (client->isRequestComplete()) {
                 logMessage("Request received from socket " + intToString(fd));
+
+                std::string requestRaw = client->getRequest();
+
+                Request request;
+                if (request.parse(requestRaw))
+                {
+                    
+                }
                 
                 // For now, send a simple hardcoded HTTP response
                 std::string response = 
@@ -167,11 +170,8 @@ void Server::_handleClient(int fd) {
             logMessage("Client disconnected: socket " + intToString(fd));
             _closeConnection(fd);
         } else {
-            // Error (but not EAGAIN/EWOULDBLOCK)
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                logError("Error reading from socket " + intToString(fd));
-                _closeConnection(fd);
-            }
+            logError("Error reading from socket " + intToString(fd));
+            _closeConnection(fd);
         }
     } else if (client->getState() == SENDING_RESPONSE) {
         // Send data to client
@@ -181,10 +181,8 @@ void Server::_handleClient(int fd) {
             ssize_t bytesSent = send(fd, chunk.c_str(), chunk.size(), 0);
             
             if (bytesSent < 0) {
-                if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                    logError("Error sending to socket " + intToString(fd));
-                    _closeConnection(fd);
-                }
+                logError("Error sending to socket " + intToString(fd));
+                _closeConnection(fd);
                 return;
             }
             
