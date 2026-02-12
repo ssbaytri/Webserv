@@ -21,7 +21,7 @@ private:
     size_t _body_start;
 
     bool parseRequestLine(const std::string& rawRequest);
-    bool parseHeeaders(const std::string& rawRequest);
+    bool parseHeaders(const std::string& rawRequest);
 
 public:
     Request();

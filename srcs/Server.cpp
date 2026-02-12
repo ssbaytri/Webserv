@@ -201,7 +201,7 @@ void Server::_handleClient(int fd) {
                     }
                 }
                 
-                response.setHeader("Connectiond", "close");
+                response.setHeader("Connection", "close");
 
                 client->setResponse(response.toString());
 

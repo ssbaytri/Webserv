@@ -3,7 +3,17 @@
 #include <iostream>
 #include <cstdlib>
 
-Request::Request() : _method(""), _uri(""), _version(""), _body("") {
+Request::Request() 
+    : _method(""), 
+    _uri(""), 
+    _version(""), 
+    _body(""),
+    host(""),
+    contentLength(0),
+    contentType(""),
+    connection(""),
+    _body_start(0)
+{
 }
 
 Request::~Request() {
@@ -54,7 +64,7 @@ bool Request::parseRequestLine(const std::string& rawRequest)
     return true;
 }
 
-bool Request::parseHeeaders(const std::string& rawRequest)
+bool Request::parseHeaders(const std::string& rawRequest)
 {
     size_t pos = rawRequest.find("\r\n");
     if (pos == std::string::npos)
@@ -108,7 +118,7 @@ bool Request::parseHeeaders(const std::string& rawRequest)
 
 bool Request::parse(const std::string& rawRequest)
 {
-    if (!parseRequestLine(rawRequest) || !parseHeeaders(rawRequest))
+    if (!parseRequestLine(rawRequest) || !parseHeaders(rawRequest))
     {
         logError("Invalid HTTP request");
         return false;
