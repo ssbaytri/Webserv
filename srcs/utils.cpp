@@ -1,5 +1,12 @@
 #include "../includes/utils.hpp"
 #include <iostream>
+#include <cctype>
+#include <sys/stat.h>
+#include <fstream>
+
+#define COLOR_ORANGE "\033[38;5;208m"
+#define COLOR_RED "\033[31m"
+#define COLOR_RESET "\033[0m"
 
 std::string intToString(int num) {
     std::stringstream ss;
@@ -8,11 +15,11 @@ std::string intToString(int num) {
 }
 
 void logMessage(const std::string& message) {
-    std::cout << "[INFO] " << message << std::endl;
+    std::cout << COLOR_ORANGE << "[INFO] " << message << COLOR_RESET << std::endl;
 }
 
 void logError(const std::string& error) {
-    std::cerr << "[ERROR] " << error << std::endl;
+    std::cerr << COLOR_RED << "[ERROR] " << error << COLOR_RESET << std::endl;
 }
 
 std::string	toLowerCase(const std::string& str)
@@ -41,3 +48,76 @@ std::string trim(const std::string& str)
 }
 
 
+bool fileExists(const std::string &path)
+{
+    struct stat buffer;
+    return (stat(path.c_str(), &buffer) == 0 && S_ISREG(buffer.st_mode));
+}
+
+bool isDirectory(const std::string &path)
+{
+    struct stat buffer;
+    return (stat(path.c_str(), &buffer) == 0 && S_ISDIR(buffer.st_mode));
+}
+
+std::string readFile(const std::string &path)
+{
+    std::ifstream file(path.c_str(), std::ios::binary);
+    
+    if (!file.is_open()) {
+        logError("Failed to open file: " + path);
+        return "";
+    }
+    
+    file.seekg(0, std::ios::end);
+    size_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    std::string content;
+    content.resize(size);
+    file.read(&content[0], size);
+    file.close();
+    
+    return content;
+}
+
+std::string getMimeType(const std::string& path) {
+    size_t dotPos = path.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        return "application/octet-stream";
+    }
+    
+    std::string ext = toLowerCase(path.substr(dotPos + 1));
+    
+    // Map extensions to MIME types
+    if (ext == "html" || ext == "htm") return "text/html";
+    if (ext == "css") return "text/css";
+    if (ext == "js") return "application/javascript";
+    if (ext == "json") return "application/json";
+    if (ext == "xml") return "application/xml";
+    if (ext == "txt") return "text/plain";
+    
+    // Images
+    if (ext == "jpg" || ext == "jpeg") return "image/jpeg";
+    if (ext == "png") return "image/png";
+    if (ext == "gif") return "image/gif";
+    if (ext == "svg") return "image/svg+xml";
+    if (ext == "ico") return "image/x-icon";
+    if (ext == "webp") return "image/webp";
+    
+    // Fonts
+    if (ext == "woff") return "font/woff";
+    if (ext == "woff2") return "font/woff2";
+    if (ext == "ttf") return "font/ttf";
+    if (ext == "otf") return "font/otf";
+    
+    // Archives
+    if (ext == "zip") return "application/zip";
+    if (ext == "tar") return "application/x-tar";
+    if (ext == "gz") return "application/gzip";
+    
+    // PDF
+    if (ext == "pdf") return "application/pdf";
+    
+    return "application/octet-stream";
+}

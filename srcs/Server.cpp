@@ -1,8 +1,10 @@
 #include "../includes/Server.hpp"
 #include "../includes/utils.hpp"
 #include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
 #include <arpa/inet.h>
 #include <stdexcept>
+#include <fstream>
 
 // Constructor
 Server::Server(int port) : _port(port), _serverSocket(-1) {
@@ -141,22 +143,68 @@ void Server::_handleClient(int fd) {
                 std::string requestRaw = client->getRequest();
 
                 Request request;
-                if (request.parse(requestRaw))
+                Response response;
+
+                if (!request.parse(requestRaw))
                 {
-                    
+                    response.setStatus(400);
+                    response.setHeader("Content-Type", "text/html");
+                    response.setBody("<html><body><h1>400 Bad Request</h1></body></html>");
+                }
+                else
+                {
+                    std::string method = request.getMethod();
+                    std::string uri = request.getUri();
+
+                    logMessage("Method: " + method + ", URI: " + uri);
+
+                    if (method == "GET")
+                    {
+                        std::string file_path = "./www" + uri;
+                        if (uri == "/") file_path = "./www/index.html";
+
+                        logMessage("Serving file: " + file_path);
+
+                        if (fileExists(file_path))
+                        {
+                            std::string content = readFile(file_path);
+
+                            if (!content.empty())
+                            {
+                                response.setStatus(200);
+                                response.setHeader("Content-Type", getMimeType(file_path));
+                                response.setHeader("Content-Length", intToString(content.size()));
+                                response.setBody(content);
+
+                                logMessage("Serving " + file_path + " (" + intToString(content.size()) + " bytes)");
+                            }
+                            else
+                            {
+                                response.setStatus(500);
+                                response.setHeader("Content-Type", "text/html");
+                                response.setBody("<html><body><h1>500 Internal Server Error</h1></body></html>");
+                            }
+                        }
+                        else
+                        {
+                            logMessage("File not found: " + file_path);
+                            response.setStatus(404);
+                            response.setHeader("Content-Type", "text/html");
+                            response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
+                        }
+                    }
+                    else
+                    {
+                        response.setStatus(501);
+                        response.setHeader("Content-Type", "text/html");
+                        response.setBody("<html><body><h1>501 Not Implemented</h1><p>Method " + method + " is not supported yet.</p></body></html>");
+                    }
                 }
                 
-                // For now, send a simple hardcoded HTTP response
-                std::string response = 
-                    "HTTP/1.1 200 OK\r\n"
-                    "Content-Type: text/html\r\n"
-                    "Content-Length: 51\r\n"
-                    "Connection: close\r\n"
-                    "\r\n"
-                    "<html><body><h1>Hello from webserv!</h1></body></html>";
-                
-                client->setResponse(response);
-                
+                response.setHeader("Connectiond", "close");
+
+                client->setResponse(response.toString());
+
                 // Update poll to monitor for writing
                 for (size_t i = 0; i < _pollFds.size(); ++i) {
                     if (_pollFds[i].fd == fd) {

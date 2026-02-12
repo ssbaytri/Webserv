@@ -12,4 +12,9 @@ void        logError(const std::string& error);
 std::string	toLowerCase(const std::string& str);
 std::string trim(const std::string& str);
 
+bool        fileExists(const std::string& path);
+bool        isDirectory(const std::string& path);
+std::string readFile(const std::string& path);
+std::string getMimeType(const std::string& path);
+
 #endif

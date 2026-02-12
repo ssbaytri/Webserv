@@ -118,10 +118,6 @@ bool Request::parse(const std::string& rawRequest)
     contentLength = atoi(_headers["content-length"].c_str());
     contentType = _headers["content-type"];
 
-    for (std::map<std::string, std::string>::iterator it = _headers.begin(); it != _headers.end(); ++it) {
-    std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
-    }
-
     std::cout << "Host: " << host << std::endl;
     std::cout << "Content-Length: " << contentLength << std::endl;
     std::cout << "Content-type: " << contentType << std::endl;

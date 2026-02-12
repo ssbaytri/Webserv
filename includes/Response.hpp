@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <sstream>
 
 // Placeholder for now - we'll implement this later
 class Response {
@@ -11,6 +12,8 @@ private:
     std::string _statusMessage;
     std::map<std::string, std::string> _headers;
     std::string _body;
+
+    std::string _getStatusMessage(int code);
 
 public:
     Response();
@@ -23,6 +26,10 @@ public:
     
     // Generate HTTP response string
     std::string toString() const;
+
+    // Getters
+    int getStatusCode() const;
+    std::string getBody() const;
 };
 
 #endif
