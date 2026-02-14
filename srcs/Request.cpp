@@ -128,9 +128,15 @@ bool Request::parse(const std::string& rawRequest)
     contentLength = atoi(_headers["content-length"].c_str());
     contentType = _headers["content-type"];
 
+    if (contentLength > 0 && _body_start != std::string::npos)
+    {
+        _body = rawRequest.substr(_body_start, contentLength);
+    }
+
     std::cout << "Host: " << host << std::endl;
     std::cout << "Content-Length: " << contentLength << std::endl;
     std::cout << "Content-type: " << contentType << std::endl;
+    std::cout << "Body: " << _body << std::endl;
 
     return true;
 }
@@ -145,4 +151,14 @@ std::string Request::getUri() const {
 
 std::string Request::getVersion() const {
     return _version;
+}
+
+size_t Request::getContentLength() const
+{
+    return contentLength;
+}
+
+std::string Request::getBody() const
+{
+    return _body;
 }

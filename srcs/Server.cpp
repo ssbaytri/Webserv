@@ -204,7 +204,7 @@ void Server::_handleClient(int fd) {
                         }
                         else
                         {
-                            std::string file_path = "./www" + uri;
+                            std::string file_path = "./uploads" + uri;
                             logMessage("DELETE request for: " + file_path);
 
                             if (fileExists(file_path))
@@ -229,6 +229,20 @@ void Server::_handleClient(int fd) {
                                 response.setBody("<html><body><h1>404 Not Found</h1><p>File does not exist.</p></body></html>");
                             }
                         }
+                    }
+                    else if (method == "POST")
+                    {
+                        if (request.getContentLength() == 0)
+                        {
+                            response.setStatus(400);
+                            return ;
+                        }
+
+                        std::string body = request.getBody();
+
+                        response.setStatus(200);
+                        response.setHeader("Content-Type", "text/plain");
+                        response.setBody("Received: " + body);
                     }
                     else
                     {

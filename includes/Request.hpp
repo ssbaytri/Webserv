@@ -34,6 +34,8 @@ public:
     std::string getMethod() const;
     std::string getUri() const;
     std::string getVersion() const;
+    size_t getContentLength() const;
+    std::string getBody() const;
 };
 
 #endif
