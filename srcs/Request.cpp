@@ -7,11 +7,11 @@ Request::Request()
     : _method(""), 
     _uri(""), 
     _version(""), 
-    _body(""),
     host(""),
     contentLength(0),
     contentType(""),
     connection(""),
+    _body(""),
     _body_start(0)
 {
 }

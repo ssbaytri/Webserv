@@ -3,6 +3,7 @@
 #include <cctype>
 #include <sys/stat.h>
 #include <fstream>
+#include <unistd.h>
 
 #define COLOR_ORANGE "\033[38;5;208m"
 #define COLOR_RED "\033[31m"
@@ -120,4 +121,43 @@ std::string getMimeType(const std::string& path) {
     if (ext == "pdf") return "application/pdf";
     
     return "application/octet-stream";
+}
+
+bool deleteFile(const std::string &path)
+{
+    if (unlink(path.c_str()) == 0) {
+        logMessage("File deleted: " + path);
+        return true;
+    } else {
+        logError("Failed to delete file: " + path);
+        return false;
+    }
+}
+
+bool isPathSafe(const std::string &path)
+{
+     // 1. Reject paths containing ".."
+    if (path.find("..") != std::string::npos) {
+        logError("Path contains '..': " + path);
+        return false;
+    }
+    
+    // 2. Reject absolute paths (starting with /)
+    // We want relative paths only
+    if (!path.empty() && path[0] == '/') {
+        // This is okay - we handle this by prepending ./www
+        // But double-check there's no // which could be tricky
+        if (path.length() > 1 && path[1] == '/') {
+            logError("Path contains '//': " + path);
+            return false;
+        }
+    }
+    
+    // 3. Reject paths with null bytes
+    if (path.find('\0') != std::string::npos) {
+        logError("Path contains null byte");
+        return false;
+    }
+    
+    return true;
 }

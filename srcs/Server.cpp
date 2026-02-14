@@ -193,6 +193,43 @@ void Server::_handleClient(int fd) {
                             response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
                         }
                     }
+                    else if (method == "DELETE")
+                    {
+                        if (!isPathSafe(uri))
+                        {
+                            logError("Unsafe path in DELETE request: " + uri);
+                            response.setStatus(403);
+                            response.setHeader("Content-Type", "text/html");
+                            response.setBody("<html><body><h1>403 Forbidden</h1><p>Invalid file path.</p></body></html>");
+                        }
+                        else
+                        {
+                            std::string file_path = "./www" + uri;
+                            logMessage("DELETE request for: " + file_path);
+
+                            if (fileExists(file_path))
+                            {
+                                if (deleteFile(file_path))
+                                {
+                                    response.setStatus(204);
+                                    logMessage("File deleted successfully: " + file_path);
+                                }
+                                else
+                                {
+                                    response.setStatus(500);
+                                    response.setHeader("Content-Type", "text/html");
+                                    response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to delete file.</p></body></html>");
+                                }
+                            }
+                            else
+                            {
+                                logMessage("Cannot delete - file not found: " + file_path);
+                                response.setStatus(404);
+                                response.setHeader("Content-Type", "text/html");
+                                response.setBody("<html><body><h1>404 Not Found</h1><p>File does not exist.</p></body></html>");
+                            }
+                        }
+                    }
                     else
                     {
                         response.setStatus(501);
