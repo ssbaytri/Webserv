@@ -20,8 +20,14 @@ private:
     std::string _body;
     size_t _body_start;
 
+    std::string _uploadedFileName;
+    std::string _uploadedFileContent;
+
     bool parseRequestLine(const std::string& rawRequest);
     bool parseHeaders(const std::string& rawRequest);
+
+    bool _parseMultipart();
+    std::string _extractBoundary(const std::string& contentType);
 
 public:
     Request();
@@ -36,6 +42,10 @@ public:
     std::string getVersion() const;
     size_t getContentLength() const;
     std::string getBody() const;
+
+    bool isMultipartUpload() const;
+    std::string getUploadedFileName() const;
+    std::string getUploadedFileContent() const;
 };
 
 #endif
