@@ -161,3 +161,17 @@ bool isPathSafe(const std::string &path)
     
     return true;
 }
+
+bool writeFile(const std::string& filePath, const std::string& content)
+{
+    std::ofstream file(filePath.c_str(), std::ios::binary);
+    if (!file.is_open()) {
+        logError("Failed to open file for writing: " + filePath);
+        return false;
+    }
+    
+    file.write(content.c_str(), content.size());
+    file.close();
+    
+    return true;
+}

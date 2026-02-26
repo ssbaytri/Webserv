@@ -18,5 +18,6 @@ std::string readFile(const std::string& path);
 std::string getMimeType(const std::string& path);
 bool        deleteFile(const std::string& path);
 bool        isPathSafe(const std::string& path);
+bool writeFile(const std::string& filePath, const std::string& content);
 
 #endif

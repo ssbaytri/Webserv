@@ -235,14 +235,54 @@ void Server::_handleClient(int fd) {
                         if (request.getContentLength() == 0)
                         {
                             response.setStatus(400);
-                            return ;
+                            response.setHeader("Content-Type", "text/html");
+                            response.setBody("<html><body><h1>400 Bad Request</h1><p>No content provided.</p></body></html>");
                         }
+                        else if (request.isMultipartUpload())
+                        {
+                            std::string fileName = request.getUploadedFileName();
+                            std::string fileContent = request.getUploadedFileContent();
 
-                        std::string body = request.getBody();
-
-                        response.setStatus(200);
-                        response.setHeader("Content-Type", "text/plain");
-                        response.setBody("Received: " + body);
+                            // Validate filename
+                            if (!isPathSafe(fileName) || fileName.empty())
+                            {
+                                logError("Unsafe or empty filename: " + fileName);
+                                response.setStatus(400);
+                                response.setHeader("Content-Type", "text/html");
+                                response.setBody("<html><body><h1>400 Bad Request</h1><p>Invalid filename.</p></body></html>");
+                            }
+                            // Check file size (example: 10MB limit)
+                            else if (fileContent.size() > 10485760)  // 10 * 1024 * 1024
+                            {
+                                response.setStatus(413);
+                                response.setHeader("Content-Type", "text/html");
+                                response.setBody("<html><body><h1>413 Payload Too Large</h1></body></html>");
+                            }
+                            else
+                            {
+                                std::string uploadPath = "./uploads/" + fileName;
+                                
+                                if (writeFile(uploadPath, fileContent))
+                                {
+                                    response.setStatus(201);
+                                    response.setHeader("Content-Type", "text/plain");
+                                    response.setBody("File uploaded successfully: " + fileName);
+                                    logMessage("File uploaded: " + uploadPath + " (" + intToString(fileContent.size()) + " bytes)");
+                                }
+                                else
+                                {
+                                    response.setStatus(500);
+                                    response.setHeader("Content-Type", "text/html");
+                                    response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to save file.</p></body></html>");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            response.setStatus(400);
+                            response.setHeader("Content-Type", "text/html");
+                            response.setBody("<html><body><h1>400 Bad Request</h1><p>Unsupported content type for POST.</p></body></html>");
+                        }
                     }
                     else
                     {

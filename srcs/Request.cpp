@@ -138,6 +138,13 @@ bool Request::parse(const std::string& rawRequest)
     std::cout << "Content-type: " << contentType << std::endl;
     std::cout << "Body: " << _body << std::endl;
 
+    if (isMultipartUpload()) {
+        if (!_parseMultipart()) {
+            logError("Failed to parse multipart upload");
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -161,4 +168,104 @@ size_t Request::getContentLength() const
 std::string Request::getBody() const
 {
     return _body;
+}
+
+std::string Request::_extractBoundary(const std::string& contentType)
+{
+    // contentType looks like: "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW"
+    size_t boundaryPos = contentType.find("boundary=");
+    if (boundaryPos == std::string::npos) {
+        return "";
+    }
+    return contentType.substr(boundaryPos + 9);  // 9 = strlen("boundary=")
+}
+
+bool Request::_parseMultipart()
+{
+    std::string boundary = _extractBoundary(contentType);
+    if (boundary.empty()) {
+        logError("No boundary found in Content-Type");
+        return false;
+    }
+
+    // Multipart format:
+    // --boundary\r\n
+    // Content-Disposition: form-data; name="file"; filename="test.txt"\r\n
+    // Content-Type: text/plain\r\n
+    // \r\n
+    // [FILE CONTENT]\r\n
+    // --boundary--\r\n
+
+    std::string boundaryDelimiter = "--" + boundary;
+    size_t pos = _body.find(boundaryDelimiter);
+    
+    if (pos == std::string::npos) {
+        logError("Boundary not found in multipart body");
+        return false;
+    }
+
+    // Move past first boundary
+    pos += boundaryDelimiter.length();
+    if (_body[pos] == '\r' && _body[pos + 1] == '\n') {
+        pos += 2;
+    }
+
+    // Parse part headers
+    size_t headerEnd = _body.find("\r\n\r\n", pos);
+    if (headerEnd == std::string::npos) {
+        logError("Part headers not found");
+        return false;
+    }
+
+    std::string partHeaders = _body.substr(pos, headerEnd - pos);
+    std::cout << "Part headers:\n" << partHeaders << std::endl;
+
+    // Extract filename from Content-Disposition
+    // Looking for: filename="test.txt"
+    size_t filenamePos = partHeaders.find("filename=\"");
+    if (filenamePos != std::string::npos) {
+        filenamePos += 10;  // strlen("filename=\"")
+        size_t filenameEnd = partHeaders.find("\"", filenamePos);
+        if (filenameEnd != std::string::npos) {
+            _uploadedFileName = partHeaders.substr(filenamePos, filenameEnd - filenamePos);
+            std::cout << "Extracted filename: " << _uploadedFileName << std::endl;
+        }
+    }
+
+    // File content starts after \r\n\r\n
+    size_t contentStart = headerEnd + 4;
+
+    // Find the boundary that marks end of file
+    std::string endBoundary = "\r\n" + boundaryDelimiter;
+    size_t contentEnd = _body.find(endBoundary, contentStart);
+    
+    if (contentEnd == std::string::npos) {
+        logError("End boundary not found");
+        return false;
+    }
+
+    _uploadedFileContent = _body.substr(contentStart, contentEnd - contentStart);
+    std::cout << "File size: " << _uploadedFileContent.size() << " bytes" << std::endl;
+
+    if (_uploadedFileName.empty() || _uploadedFileContent.empty()) {
+        logError("Failed to extract filename or content");
+        return false;
+    }
+
+    return true;
+}
+
+bool Request::isMultipartUpload() const
+{
+    return contentType.find("multipart/form-data") != std::string::npos;
+}
+
+std::string Request::getUploadedFileName() const
+{
+    return _uploadedFileName;
+}
+
+std::string Request::getUploadedFileContent() const
+{
+    return _uploadedFileContent;
 }
