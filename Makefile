@@ -15,6 +15,7 @@ SRCS		= main.cpp \
 			  Client.cpp \
 			  Request.cpp \
 			  Response.cpp \
+			  Config.cpp   \
 			  utils.cpp
 
 # Object files
@@ -25,6 +26,7 @@ HEADERS		= $(INC_DIR)/Server.hpp \
 			  $(INC_DIR)/Client.hpp \
 			  $(INC_DIR)/Request.hpp \
 			  $(INC_DIR)/Response.hpp \
+			  $(INC_DIR)/Config.hpp \
 			  $(INC_DIR)/utils.hpp
 
 # Colors
