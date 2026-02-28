@@ -136,7 +136,6 @@ bool Request::parse(const std::string& rawRequest)
     std::cout << "Host: " << host << std::endl;
     std::cout << "Content-Length: " << contentLength << std::endl;
     std::cout << "Content-type: " << contentType << std::endl;
-    std::cout << "Body: " << _body << std::endl;
 
     if (isMultipartUpload()) {
         if (!_parseMultipart()) {
@@ -188,25 +187,19 @@ bool Request::_parseMultipart()
         return false;
     }
 
-    // Multipart format:
-    // --boundary\r\n
-    // Content-Disposition: form-data; name="file"; filename="test.txt"\r\n
-    // Content-Type: text/plain\r\n
-    // \r\n
-    // [FILE CONTENT]\r\n
-    // --boundary--\r\n
-
+    // The boundary in the body already has -- prefix
     std::string boundaryDelimiter = "--" + boundary;
     size_t pos = _body.find(boundaryDelimiter);
     
     if (pos == std::string::npos) {
         logError("Boundary not found in multipart body");
+        logError("Looking for: [" + boundaryDelimiter + "]");
         return false;
     }
 
-    // Move past first boundary
+    // Move past first boundary and \r\n
     pos += boundaryDelimiter.length();
-    if (_body[pos] == '\r' && _body[pos + 1] == '\n') {
+    if (pos + 1 < _body.length() && _body[pos] == '\r' && _body[pos + 1] == '\n') {
         pos += 2;
     }
 
@@ -220,11 +213,10 @@ bool Request::_parseMultipart()
     std::string partHeaders = _body.substr(pos, headerEnd - pos);
     std::cout << "Part headers:\n" << partHeaders << std::endl;
 
-    // Extract filename from Content-Disposition
-    // Looking for: filename="test.txt"
+    // Extract filename
     size_t filenamePos = partHeaders.find("filename=\"");
     if (filenamePos != std::string::npos) {
-        filenamePos += 10;  // strlen("filename=\"")
+        filenamePos += 10;
         size_t filenameEnd = partHeaders.find("\"", filenamePos);
         if (filenameEnd != std::string::npos) {
             _uploadedFileName = partHeaders.substr(filenamePos, filenameEnd - filenamePos);
@@ -235,16 +227,24 @@ bool Request::_parseMultipart()
     // File content starts after \r\n\r\n
     size_t contentStart = headerEnd + 4;
 
-    // Find the boundary that marks end of file
-    std::string endBoundary = "\r\n" + boundaryDelimiter;
-    size_t contentEnd = _body.find(endBoundary, contentStart);
+    // Find the closing boundary (with \r\n prefix)
+    std::string closingBoundary = "\r\n" + boundaryDelimiter;
+    size_t contentEnd = _body.find(closingBoundary, contentStart);
     
     if (contentEnd == std::string::npos) {
-        logError("End boundary not found");
-        return false;
+        // Try without \r\n prefix (edge case)
+        contentEnd = _body.find(boundaryDelimiter, contentStart);
+        if (contentEnd == std::string::npos) {
+            logError("End boundary not found");
+            logError("Body length: " + intToString(_body.length()));
+            logError("Content start: " + intToString(contentStart));
+            return false;
+        }
+        _uploadedFileContent = _body.substr(contentStart, contentEnd - contentStart);
+    } else {
+        _uploadedFileContent = _body.substr(contentStart, contentEnd - contentStart);
     }
 
-    _uploadedFileContent = _body.substr(contentStart, contentEnd - contentStart);
     std::cout << "File size: " << _uploadedFileContent.size() << " bytes" << std::endl;
 
     if (_uploadedFileName.empty() || _uploadedFileContent.empty()) {

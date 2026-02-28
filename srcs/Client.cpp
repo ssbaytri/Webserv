@@ -22,10 +22,49 @@ void Client::appendToRequest(const std::string& data) {
 }
 
 bool Client::isRequestComplete() const {
-    // Simple check: HTTP request ends with \r\n\r\n (empty line)
-    // For now, we'll just check for this pattern
-    // Later, we'll need to handle Content-Length for POST requests
-    return _requestBuffer.find("\r\n\r\n") != std::string::npos;
+    // First, check if we have the headers (ends with \r\n\r\n)
+    size_t headerEnd = _requestBuffer.find("\r\n\r\n");
+    if (headerEnd == std::string::npos) {
+        return false; // Headers not complete yet
+    }
+    
+    // Headers are complete, now check if we need a body
+    // Extract Content-Length from headers (simple parsing)
+    size_t contentLengthPos = _requestBuffer.find("Content-Length:");
+    if (contentLengthPos == std::string::npos) {
+        contentLengthPos = _requestBuffer.find("content-length:");
+    }
+    
+    if (contentLengthPos != std::string::npos && contentLengthPos < headerEnd) {
+        // Find the value
+        size_t valueStart = _requestBuffer.find(":", contentLengthPos) + 1;
+        size_t valueEnd = _requestBuffer.find("\r\n", valueStart);
+        
+        if (valueStart != std::string::npos && valueEnd != std::string::npos) {
+            std::string lengthStr = _requestBuffer.substr(valueStart, valueEnd - valueStart);
+            
+            // Trim whitespace
+            size_t first = lengthStr.find_first_not_of(" \t");
+            size_t last = lengthStr.find_last_not_of(" \t");
+            if (first != std::string::npos && last != std::string::npos) {
+                lengthStr = lengthStr.substr(first, last - first + 1);
+            }
+            
+            int contentLength = atoi(lengthStr.c_str());
+            
+            if (contentLength > 0) {
+                // Body starts after \r\n\r\n
+                size_t bodyStart = headerEnd + 4;
+                size_t bodyReceived = _requestBuffer.length() - bodyStart;
+                
+                // Check if we've received the entire body
+                return bodyReceived >= (size_t)contentLength;
+            }
+        }
+    }
+    
+    // No Content-Length or Content-Length: 0, headers are enough
+    return true;
 }
 
 std::string Client::getRequest() const {

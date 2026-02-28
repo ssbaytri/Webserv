@@ -3,6 +3,7 @@
 
 #include <string>
 #include <ctime>
+#include <cstdlib>
 
 enum ClientState {
     READING_REQUEST,
