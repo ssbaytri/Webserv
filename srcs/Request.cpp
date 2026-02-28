@@ -130,6 +130,12 @@ bool Request::parse(const std::string& rawRequest)
 
     if (contentLength > 0 && _body_start != std::string::npos)
     {
+        size_t availableBody = rawRequest.length() - _body_start;
+        if (availableBody < contentLength) {
+            logError("Incomplete body! Expected: " + intToString(contentLength) + 
+                    ", Got: " + intToString(availableBody));
+            return false;
+        }
         _body = rawRequest.substr(_body_start, contentLength);
     }
 

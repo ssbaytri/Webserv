@@ -21,50 +21,40 @@ void Client::appendToRequest(const std::string& data) {
     updateActivity();
 }
 
-bool Client::isRequestComplete() const {
-    // First, check if we have the headers (ends with \r\n\r\n)
-    size_t headerEnd = _requestBuffer.find("\r\n\r\n");
-    if (headerEnd == std::string::npos) {
-        return false; // Headers not complete yet
+bool Client::isRequestComplete() const
+{
+    // 1. Check if headers are complete
+    size_t headersEnd = _requestBuffer.find("\r\n\r\n");
+    if (headersEnd == std::string::npos) {
+        return false;  // Headers not done yet
     }
     
-    // Headers are complete, now check if we need a body
-    // Extract Content-Length from headers (simple parsing)
-    size_t contentLengthPos = _requestBuffer.find("Content-Length:");
-    if (contentLengthPos == std::string::npos) {
-        contentLengthPos = _requestBuffer.find("content-length:");
+    // 2. Check if there's a Content-Length header
+    size_t clPos = _requestBuffer.find("Content-Length:");
+    if (clPos == std::string::npos || clPos > headersEnd) {
+        // No Content-Length, request is complete after headers
+        return true;
     }
     
-    if (contentLengthPos != std::string::npos && contentLengthPos < headerEnd) {
-        // Find the value
-        size_t valueStart = _requestBuffer.find(":", contentLengthPos) + 1;
-        size_t valueEnd = _requestBuffer.find("\r\n", valueStart);
-        
-        if (valueStart != std::string::npos && valueEnd != std::string::npos) {
-            std::string lengthStr = _requestBuffer.substr(valueStart, valueEnd - valueStart);
-            
-            // Trim whitespace
-            size_t first = lengthStr.find_first_not_of(" \t");
-            size_t last = lengthStr.find_last_not_of(" \t");
-            if (first != std::string::npos && last != std::string::npos) {
-                lengthStr = lengthStr.substr(first, last - first + 1);
-            }
-            
-            int contentLength = atoi(lengthStr.c_str());
-            
-            if (contentLength > 0) {
-                // Body starts after \r\n\r\n
-                size_t bodyStart = headerEnd + 4;
-                size_t bodyReceived = _requestBuffer.length() - bodyStart;
-                
-                // Check if we've received the entire body
-                return bodyReceived >= (size_t)contentLength;
-            }
-        }
-    }
+    // 3. Extract Content-Length value
+    size_t lineEnd = _requestBuffer.find("\r\n", clPos);
+    std::string clLine = _requestBuffer.substr(clPos, lineEnd - clPos);
+    size_t colonPos = clLine.find(':');
+    std::string lengthStr = clLine.substr(colonPos + 1);
     
-    // No Content-Length or Content-Length: 0, headers are enough
-    return true;
+    // Trim whitespace
+    size_t start = lengthStr.find_first_not_of(" \t");
+    size_t end = lengthStr.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos) return true;
+    lengthStr = lengthStr.substr(start, end - start + 1);
+    
+    size_t contentLength = std::atoi(lengthStr.c_str());
+    
+    // 4. Check if we have the full body
+    size_t bodyStart = headersEnd + 4;
+    size_t receivedBody = _requestBuffer.length() - bodyStart;
+    
+    return receivedBody >= contentLength;
 }
 
 std::string Client::getRequest() const {
