@@ -12,13 +12,14 @@
 #include <cstring>
 #include <cerrno>
 #include "Client.hpp"
+#include "Config.hpp"
 
 #define TIMEOUT 5000
 
 class Server
 {
 	private:
-		int							_port;
+		ServerConfig				_config;
 		int							_serverSocket;
 		std::vector<struct pollfd>	_pollFds;
 		std::map<int, Client*>		_clients;
@@ -30,8 +31,10 @@ class Server
 		void    _closeConnection(int fd);
 		void    _removeFromPoll(int fd);
 
+		const LocationConfig* _findLocation(const std::string& uri) const;
+
 	public:
-		Server(int port);
+		Server(const ServerConfig& config);
 		~Server();
 
 		void run();

@@ -7,7 +7,7 @@
 #include <fstream>
 
 // Constructor
-Server::Server(int port) : _port(port), _serverSocket(-1) {
+Server::Server(const ServerConfig& config) : _config(config), _serverSocket(-1) {
     _setupSocket();
 }
 
@@ -53,12 +53,12 @@ void Server::_setupSocket() {
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;  // Listen on all interfaces
-    serverAddr.sin_port = htons(_port);
+    serverAddr.sin_port = htons(_config.port);
     
     // 5. Bind socket to address
     if (bind(_serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         close(_serverSocket);
-        throw std::runtime_error("Failed to bind socket to port " + intToString(_port));
+        throw std::runtime_error("Failed to bind socket to port " + intToString(_config.port));
     }
     
     // 6. Start listening
@@ -74,7 +74,7 @@ void Server::_setupSocket() {
     serverPollFd.revents = 0;
     _pollFds.push_back(serverPollFd);
     
-    logMessage("Server listening on port " + intToString(_port));
+    logMessage("Server listening on port " + intToString(_config.port));
 }
 
 // Set socket to non-blocking mode
@@ -417,5 +417,25 @@ void Server::run() {
 
 // Getters
 int Server::getPort() const {
-    return _port;
+    return _config.port;
+}
+
+const LocationConfig* Server::_findLocation(const std::string& uri) const {
+    const LocationConfig* bestMatch = NULL;
+    size_t longestMatch = 0;
+    
+    for (size_t i = 0; i < _config.locations.size(); i++) {
+        const LocationConfig& loc = _config.locations[i];
+        
+        // Check if URI starts with location path
+        if (uri.find(loc.path) == 0) {
+            size_t matchLen = loc.path.length();
+            if (matchLen > longestMatch) {
+                longestMatch = matchLen;
+                bestMatch = &loc;
+            }
+        }
+    }
+    
+    return bestMatch;
 }

@@ -2,29 +2,47 @@
 #include <cstdlib>
 #include "../includes/Server.hpp"
 #include "../includes/utils.hpp"
+#include "../includes/Config.hpp"
 
 int main(int argc, char **argv)
 {
-	int port = 8080;
+    if (argc != 2)
+    {
+        logError("Error: invalid arguments");
+        logError("Usage: ./webserv <config_file>");
+        return (1);
+    }
 
-	if (argc == 2)
+	Config config;
+	std::string configFile = argv[1];
+
+	if (!config.parse(argv[1]))
 	{
-		port = std::atoi(argv[1]);
-		if (port <= 0 || port > 65535)
-		{
-			logError("Invalid port number");
-			return (1);
-		}
+		logError("Failed to parse config file: " + configFile);
+		return (1);
 	}
 
-	try {
-        logMessage("Starting webserv on port " + intToString(port));
-        Server server(port);
+	config.print();
+
+	const std::vector<ServerConfig>& servers = config.getServers();
+
+	if (servers.empty())
+	{
+		logError("No servers configured");
+        return 1;
+	}
+	
+    try
+    {
+        logMessage("Starting webserv using config: " + intToString(servers[0].port));
+        Server server(servers[0]);
         server.run();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e)
+    {
         logError(std::string("Fatal error: ") + e.what());
         return 1;
     }
 
-	return (0);
+    return 0;
 }
