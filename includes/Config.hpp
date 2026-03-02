@@ -48,6 +48,7 @@ public:
     ~Config();
     
     bool parse(const std::string& filename);
+    bool validate() const;
     const std::vector<ServerConfig>& getServers() const;
     void print() const;  // For debugging
 };

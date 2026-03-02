@@ -22,6 +22,12 @@ int main(int argc, char **argv)
 		return (1);
 	}
 
+    if (!config.validate())
+    {
+        logError("Config validation failed");
+        return 1;
+    }
+
 	config.print();
 
 	const std::vector<ServerConfig>& servers = config.getServers();

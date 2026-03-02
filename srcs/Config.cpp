@@ -274,3 +274,49 @@ void Config::print() const {
         }
     }
 }
+
+bool Config::validate() const {
+    for (size_t i = 0; i < _servers.size(); i++) {
+        const ServerConfig& server = _servers[i];
+        
+        // Check port is valid
+        if (server.port <= 0 || server.port > 65535) {
+            logError("Invalid port: " + intToString(server.port));
+            return false;
+        }
+        
+        // Check root exists
+        if (!isDirectory(server.root)) {
+            logError("Root directory does not exist: " + server.root);
+            return false;
+        }
+        
+        // Check index files
+        if (server.index.empty()) {
+            logError("No index files specified for server on port " + intToString(server.port));
+            return false;
+        }
+        
+        // Validate locations
+        for (size_t j = 0; j < server.locations.size(); j++) {
+            const LocationConfig& loc = server.locations[j];
+            
+            // Check path starts with /
+            if (loc.path.empty() || loc.path[0] != '/') {
+                logError("Location path must start with /: " + loc.path);
+                return false;
+            }
+            
+            // Check methods are valid
+            for (size_t k = 0; k < loc.allowedMethods.size(); k++) {
+                std::string method = loc.allowedMethods[k];
+                if (method != "GET" && method != "POST" && method != "DELETE") {
+                    logError("Invalid method: " + method);
+                    return false;
+                }
+            }
+        }
+    }
+    
+    return true;
+}
