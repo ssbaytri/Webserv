@@ -281,8 +281,30 @@ void Server::_processRequest(Client* client)
     std::string method = request.getMethod();
     std::string uri = request.getUri();
     
+    const LocationConfig* loc = _findLocation(uri);
+
     logMessage("Method: " + method + ", URI: " + uri);
     
+    if (loc)
+    {
+        bool methodAllowed = false;
+        for (size_t i = 0; i < loc->allowedMethods.size(); i++)
+        {
+            if (loc->allowedMethods[i] == method)
+            {
+                methodAllowed = true;
+                break ;
+            }
+        }
+        if (!methodAllowed) {
+            response.setStatus(405);  // Method Not Allowed
+            response.setHeader("Content-Type", "text/html");
+            response.setBody("<html><body><h1>405 Method Not Allowed</h1></body></html>");
+            client->setResponse(response.toString());
+            return ;
+        }
+    }
+
     // Route to appropriate handler
     if (method == "GET") {
         _handleGET(request, response);
