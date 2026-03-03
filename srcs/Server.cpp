@@ -120,7 +120,235 @@ void Server::_acceptNewConnection() {
     _pollFds.push_back(clientPollFd);
 }
 
-// Handle client communication
+void Server::_handleGET(const Request& request, Response& response) {
+    std::string uri = request.getUri();
+    std::string filepath = _config.root + uri;
+    
+    // If requesting root, serve index file
+    if (uri == "/") {
+        if (!_config.index.empty()) {
+            filepath = _config.root + "/" + _config.index[0];
+        } else {
+            filepath = _config.root + "/index.html";
+        }
+    }
+    
+    logMessage("Serving file: " + filepath);
+    
+    // Check if file exists
+    if (fileExists(filepath)) {
+        std::string content = readFile(filepath);
+        
+        if (!content.empty()) {
+            response.setStatus(200);
+            response.setHeader("Content-Type", getMimeType(filepath));
+            response.setHeader("Content-Length", intToString(content.size()));
+            response.setBody(content);
+            
+            logMessage("Serving " + filepath + " (" + intToString(content.size()) + " bytes)");
+        } else {
+            response.setStatus(500);
+            response.setHeader("Content-Type", "text/html");
+            response.setBody("<html><body><h1>500 Internal Server Error</h1></body></html>");
+        }
+    } else {
+        logMessage("File not found: " + filepath);
+        response.setStatus(404);
+        response.setHeader("Content-Type", "text/html");
+        
+        // Use custom error page if configured
+        std::map<int, std::string>::const_iterator it = _config.errorPages.find(404);
+        if (it != _config.errorPages.end()) {
+            std::string errorPagePath = _config.root + it->second;
+            if (fileExists(errorPagePath)) {
+                std::string errorContent = readFile(errorPagePath);
+                response.setBody(errorContent);
+                return;
+            }
+        }
+        
+        // Default 404 page
+        response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
+    }
+}
+
+// ============================================================================
+// HANDLE POST REQUEST
+// ============================================================================
+
+void Server::_handlePOST(const Request& request, Response& response) {
+    // Check if there's content
+    if (request.getContentLength() == 0) {
+        response.setStatus(400);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>400 Bad Request</h1><p>No content provided.</p></body></html>");
+        return;
+    }
+    
+    // Check body size limit
+    if (request.getContentLength() > _config.clientMaxBodySize) {
+        response.setStatus(413);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>413 Payload Too Large</h1></body></html>");
+        return;
+    }
+    
+    // Handle multipart file upload
+    if (request.isMultipartUpload()) {
+        std::string fileName = request.getUploadedFileName();
+        std::string fileContent = request.getUploadedFileContent();
+        
+        // Validate filename
+        if (!isPathSafe(fileName) || fileName.empty()) {
+            logError("Unsafe or empty filename: " + fileName);
+            response.setStatus(400);
+            response.setHeader("Content-Type", "text/html");
+            response.setBody("<html><body><h1>400 Bad Request</h1><p>Invalid filename.</p></body></html>");
+            return;
+        }
+        
+        // Save file
+        std::string uploadPath = "./uploads/" + fileName;
+        
+        if (writeFile(uploadPath, fileContent)) {
+            response.setStatus(201);
+            response.setHeader("Content-Type", "text/plain");
+            response.setBody("File uploaded successfully: " + fileName);
+            logMessage("File uploaded: " + uploadPath + " (" + intToString(fileContent.size()) + " bytes)");
+        } else {
+            response.setStatus(500);
+            response.setHeader("Content-Type", "text/html");
+            response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to save file.</p></body></html>");
+        }
+    } else {
+        response.setStatus(400);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>400 Bad Request</h1><p>Unsupported content type for POST.</p></body></html>");
+    }
+}
+
+// ============================================================================
+// HANDLE DELETE REQUEST
+// ============================================================================
+
+void Server::_handleDELETE(const Request& request, Response& response) {
+    std::string uri = request.getUri();
+    
+    // Validate path
+    if (!isPathSafe(uri)) {
+        logError("Unsafe path in DELETE request: " + uri);
+        response.setStatus(403);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>403 Forbidden</h1><p>Invalid file path.</p></body></html>");
+        return;
+    }
+    
+    std::string filepath = "./uploads" + uri;
+    logMessage("DELETE request for: " + filepath);
+    
+    // Check if file exists
+    if (fileExists(filepath)) {
+        if (deleteFile(filepath)) {
+            response.setStatus(204);  // No Content
+            logMessage("File deleted successfully: " + filepath);
+        } else {
+            response.setStatus(500);
+            response.setHeader("Content-Type", "text/html");
+            response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to delete file.</p></body></html>");
+        }
+    } else {
+        logMessage("Cannot delete - file not found: " + filepath);
+        response.setStatus(404);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>404 Not Found</h1><p>File does not exist.</p></body></html>");
+    }
+}
+
+void Server::_processRequest(Client* client)
+{
+    Request request;
+    Response response;
+    
+    // Parse the request
+    if (!request.parse(client->getRequest())) {
+        response.setStatus(400);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>400 Bad Request</h1></body></html>");
+        client->setResponse(response.toString());
+        return;
+    }
+    
+    std::string method = request.getMethod();
+    std::string uri = request.getUri();
+    
+    logMessage("Method: " + method + ", URI: " + uri);
+    
+    // Route to appropriate handler
+    if (method == "GET") {
+        _handleGET(request, response);
+    } else if (method == "POST") {
+        _handlePOST(request, response);
+    } else if (method == "DELETE") {
+        _handleDELETE(request, response);
+    } else {
+        response.setStatus(501);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody("<html><body><h1>501 Not Implemented</h1></body></html>");
+    }
+    
+    client->setResponse(response.toString());
+}
+
+void Server::_readRequest(int fd, Client* client) {
+    char buffer[4096];
+    ssize_t bytesRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
+    
+    if (bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        client->appendToRequest(std::string(buffer, bytesRead));
+        
+        if (client->isRequestComplete()) {
+            logMessage("Request received from socket " + intToString(fd));
+            _processRequest(client);
+            
+            // Switch to sending mode
+            for (size_t i = 0; i < _pollFds.size(); ++i) {
+                if (_pollFds[i].fd == fd) {
+                    _pollFds[i].events = POLLOUT;
+                    break;
+                }
+            }
+        }
+    } else if (bytesRead == 0) {
+        logMessage("Client disconnected: socket " + intToString(fd));
+        _closeConnection(fd);
+    } else {
+        logError("Error reading from socket " + intToString(fd));
+        _closeConnection(fd);
+    }
+}
+
+void    Server::_sendResponse(int fd, Client* client)
+{
+    std::string chunk = client->getResponseChunk(4096);
+    
+    if (!chunk.empty()) {
+        ssize_t bytesSent = send(fd, chunk.c_str(), chunk.size(), 0);
+        
+        if (bytesSent < 0) {
+            logError("Error sending to socket " + intToString(fd));
+            _closeConnection(fd);
+            return;
+        }
+    }
+    
+    // Check if we're done sending
+    if (!client->hasMoreToSend()) {
+        logMessage("Response sent to socket " + intToString(fd));
+        _closeConnection(fd);
+    }
+}
+
 void Server::_handleClient(int fd) {
     Client* client = _clients[fd];
     if (!client) {
@@ -128,212 +356,9 @@ void Server::_handleClient(int fd) {
     }
     
     if (client->getState() == READING_REQUEST) {
-        // Read data from client
-        char buffer[4096];
-        ssize_t bytesRead = recv(fd, buffer, sizeof(buffer) - 1, 0);
-        
-        if (bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            client->appendToRequest(std::string(buffer, bytesRead));
-            
-            // Check if request is complete
-            if (client->isRequestComplete()) {
-                logMessage("Request received from socket " + intToString(fd));
-
-                std::string requestRaw = client->getRequest();
-
-                Request request;
-                Response response;
-
-                if (!request.parse(requestRaw))
-                {
-                    response.setStatus(400);
-                    response.setHeader("Content-Type", "text/html");
-                    response.setBody("<html><body><h1>400 Bad Request</h1></body></html>");
-                }
-                else
-                {
-                    std::string method = request.getMethod();
-                    std::string uri = request.getUri();
-
-                    logMessage("Method: " + method + ", URI: " + uri);
-
-                    if (method == "GET")
-                    {
-                        std::string file_path = "./www" + uri;
-                        if (uri == "/") file_path = "./www/index.html";
-
-                        logMessage("Serving file: " + file_path);
-
-                        if (fileExists(file_path))
-                        {
-                            std::string content = readFile(file_path);
-
-                            if (!content.empty())
-                            {
-                                response.setStatus(200);
-                                response.setHeader("Content-Type", getMimeType(file_path));
-                                response.setHeader("Content-Length", intToString(content.size()));
-                                response.setBody(content);
-
-                                logMessage("Serving " + file_path + " (" + intToString(content.size()) + " bytes)");
-                            }
-                            else
-                            {
-                                response.setStatus(500);
-                                response.setHeader("Content-Type", "text/html");
-                                response.setBody("<html><body><h1>500 Internal Server Error</h1></body></html>");
-                            }
-                        }
-                        else
-                        {
-                            logMessage("File not found: " + file_path);
-                            response.setStatus(404);
-                            response.setHeader("Content-Type", "text/html");
-                            response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
-                        }
-                    }
-                    else if (method == "DELETE")
-                    {
-                        if (!isPathSafe(uri))
-                        {
-                            logError("Unsafe path in DELETE request: " + uri);
-                            response.setStatus(403);
-                            response.setHeader("Content-Type", "text/html");
-                            response.setBody("<html><body><h1>403 Forbidden</h1><p>Invalid file path.</p></body></html>");
-                        }
-                        else
-                        {
-                            std::string file_path = "./uploads" + uri;
-                            logMessage("DELETE request for: " + file_path);
-
-                            if (fileExists(file_path))
-                            {
-                                if (deleteFile(file_path))
-                                {
-                                    response.setStatus(204);
-                                    logMessage("File deleted successfully: " + file_path);
-                                }
-                                else
-                                {
-                                    response.setStatus(500);
-                                    response.setHeader("Content-Type", "text/html");
-                                    response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to delete file.</p></body></html>");
-                                }
-                            }
-                            else
-                            {
-                                logMessage("Cannot delete - file not found: " + file_path);
-                                response.setStatus(404);
-                                response.setHeader("Content-Type", "text/html");
-                                response.setBody("<html><body><h1>404 Not Found</h1><p>File does not exist.</p></body></html>");
-                            }
-                        }
-                    }
-                    else if (method == "POST")
-                    {
-                        if (request.getContentLength() == 0)
-                        {
-                            response.setStatus(400);
-                            response.setHeader("Content-Type", "text/html");
-                            response.setBody("<html><body><h1>400 Bad Request</h1><p>No content provided.</p></body></html>");
-                        }
-                        else if (request.isMultipartUpload())
-                        {
-                            std::string fileName = request.getUploadedFileName();
-                            std::string fileContent = request.getUploadedFileContent();
-
-                            // Validate filename
-                            if (!isPathSafe(fileName) || fileName.empty())
-                            {
-                                logError("Unsafe or empty filename: " + fileName);
-                                response.setStatus(400);
-                                response.setHeader("Content-Type", "text/html");
-                                response.setBody("<html><body><h1>400 Bad Request</h1><p>Invalid filename.</p></body></html>");
-                            }
-                            // Check file size (example: 10MB limit)
-                            else if (fileContent.size() > 10485760)  // 10 * 1024 * 1024
-                            {
-                                response.setStatus(413);
-                                response.setHeader("Content-Type", "text/html");
-                                response.setBody("<html><body><h1>413 Payload Too Large</h1></body></html>");
-                            }
-                            else
-                            {
-                                std::string uploadPath = "./uploads/" + fileName;
-                                
-                                if (writeFile(uploadPath, fileContent))
-                                {
-                                    response.setStatus(201);
-                                    response.setHeader("Content-Type", "text/plain");
-                                    response.setBody("File uploaded successfully: " + fileName);
-                                    logMessage("File uploaded: " + uploadPath + " (" + intToString(fileContent.size()) + " bytes)");
-                                }
-                                else
-                                {
-                                    response.setStatus(500);
-                                    response.setHeader("Content-Type", "text/html");
-                                    response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to save file.</p></body></html>");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            response.setStatus(400);
-                            response.setHeader("Content-Type", "text/html");
-                            response.setBody("<html><body><h1>400 Bad Request</h1><p>Unsupported content type for POST.</p></body></html>");
-                        }
-                    }
-                    else
-                    {
-                        response.setStatus(501);
-                        response.setHeader("Content-Type", "text/html");
-                        response.setBody("<html><body><h1>501 Not Implemented</h1><p>Method " + method + " is not supported yet.</p></body></html>");
-                    }
-                }
-                
-                response.setHeader("Connection", "close");
-
-                client->setResponse(response.toString());
-
-                // Update poll to monitor for writing
-                for (size_t i = 0; i < _pollFds.size(); ++i) {
-                    if (_pollFds[i].fd == fd) {
-                        _pollFds[i].events = POLLOUT;
-                        break;
-                    }
-                }
-            }
-        } else if (bytesRead == 0) {
-            // Client closed connection
-            logMessage("Client disconnected: socket " + intToString(fd));
-            _closeConnection(fd);
-        } else {
-            logError("Error reading from socket " + intToString(fd));
-            _closeConnection(fd);
-        }
+        _readRequest(fd, client);
     } else if (client->getState() == SENDING_RESPONSE) {
-        // Send data to client
-        std::string chunk = client->getResponseChunk(4096);
-        
-        if (!chunk.empty()) {
-            ssize_t bytesSent = send(fd, chunk.c_str(), chunk.size(), 0);
-            
-            if (bytesSent < 0) {
-                logError("Error sending to socket " + intToString(fd));
-                _closeConnection(fd);
-                return;
-            }
-            
-            // If we sent less than the chunk, we need to adjust
-            // For now, we'll keep it simple and send full chunks
-        }
-        
-        // Check if we're done sending
-        if (!client->hasMoreToSend()) {
-            logMessage("Response sent to socket " + intToString(fd));
-            _closeConnection(fd);  // Close connection after response
-        }
+        _sendResponse(fd, client);
     }
 }
 

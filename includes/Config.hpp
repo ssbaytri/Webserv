@@ -28,7 +28,7 @@ struct ServerConfig {
     std::map<int, std::string> errorPages;      // {404: "/errors/404.html"}
     std::vector<LocationConfig> locations;      // All location blocks
     
-    ServerConfig() : port(8080), clientMaxBodySize(1048576) {} // Default 1MB
+    ServerConfig() : port(8080), serverName("localhost"), clientMaxBodySize(1048576) {}
 };
 
 // Main config class
