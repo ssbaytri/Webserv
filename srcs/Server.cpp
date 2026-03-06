@@ -289,11 +289,17 @@ void Server::_processRequest(Client* client)
     
     std::string method = request.getMethod();
     std::string uri = request.getUri();
-    
-    const LocationConfig* loc = _findLocation(uri);
 
     logMessage("Method: " + method + ", URI: " + uri);
     
+    if (method != "GET" && method != "POST" && method != "DELETE")
+    {
+        _setErrorResponse(response, 501);
+        client->setResponse(response.toString());
+        return;
+    }
+
+    const LocationConfig* loc = _findLocation(uri);
     if (loc)
     {
         bool methodAllowed = false;
@@ -306,27 +312,18 @@ void Server::_processRequest(Client* client)
             }
         }
         if (!methodAllowed) {
-            response.setStatus(405);  // Method Not Allowed
-            response.setHeader("Content-Type", "text/html");
-            response.setBody("<html><body><h1>405 Method Not Allowed</h1></body></html>");
+            _setErrorResponse(response, 405);
             client->setResponse(response.toString());
             return ;
         }
     }
 
-    // Route to appropriate handler
-    if (method == "GET") {
+    if (method == "GET")
         _handleGET(request, response);
-    } else if (method == "POST") {
+    else if (method == "POST")
         _handlePOST(request, response);
-    } else if (method == "DELETE") {
+    else if (method == "DELETE")
         _handleDELETE(request, response);
-    } else {
-        response.setStatus(501);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>501 Not Implemented</h1></body></html>");
-    }
-    
     client->setResponse(response.toString());
 }
 
@@ -494,4 +491,36 @@ const LocationConfig* Server::_findLocation(const std::string& uri) const {
     }
     
     return bestMatch;
+}
+
+void Server::_setErrorResponse(Response& response, int statusCode)
+{
+    response.setStatus(statusCode);
+    response.setHeader("Content-Type", "text/html");
+    
+    std::map<int, std::string>::const_iterator it = _config.errorPages.find(statusCode);
+    if (it != _config.errorPages.end()) {
+        std::string errorPagePath = _config.root + it->second;
+        if (fileExists(errorPagePath)) {
+            std::string errorContent = readFile(errorPagePath);
+            if (!errorContent.empty()) {
+                response.setBody(errorContent);
+                return;
+            }
+        }
+    }
+    
+    // Default error pages
+    std::string defaultBody;
+    switch (statusCode) {
+        case 400: defaultBody = "<html><body><h1>400 Bad Request</h1></body></html>"; break;
+        case 403: defaultBody = "<html><body><h1>403 Forbidden</h1></body></html>"; break;
+        case 404: defaultBody = "<html><body><h1>404 Not Found</h1></body></html>"; break;
+        case 405: defaultBody = "<html><body><h1>405 Method Not Allowed</h1></body></html>"; break;
+        case 413: defaultBody = "<html><body><h1>413 Payload Too Large</h1></body></html>"; break;
+        case 500: defaultBody = "<html><body><h1>500 Internal Server Error</h1></body></html>"; break;
+        case 501: defaultBody = "<html><body><h1>501 Not Implemented</h1></body></html>"; break;
+        default:  defaultBody = "<html><body><h1>Error</h1></body></html>"; break;
+    }
+    response.setBody(defaultBody);
 }

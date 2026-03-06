@@ -40,6 +40,8 @@ class Server
 		void	_handleDELETE(const Request& request, Response& response);
 		void	_sendResponse(int fd, Client* client);
 
+		void	_setErrorResponse(Response& response, int statusCode);
+
 		const LocationConfig* _findLocation(const std::string& uri) const;
 
 	public:
