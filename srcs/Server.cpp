@@ -185,11 +185,20 @@ void Server::_handlePOST(const Request& request, Response& response) {
         return;
     }
     
-    // Check body size limit
-    if (request.getContentLength() > _config.clientMaxBodySize) {
+    const LocationConfig* location = _findLocation(request.getUri());
+    size_t maxBodySize = _config.clientMaxBodySize;     //server default
+
+    if (location && location->clientMaxBodySize > 0)
+    {
+        maxBodySize = location->clientMaxBodySize;
+    }
+
+    if (request.getContentLength() > maxBodySize)
+    {
         response.setStatus(413);
-        response.setHeader("Content-Type", "text/html");
         response.setBody("<html><body><h1>413 Payload Too Large</h1></body></html>");
+        logError("Request body too large: " + intToString(request.getContentLength()) + 
+                " > " + intToString(maxBodySize));
         return;
     }
     
