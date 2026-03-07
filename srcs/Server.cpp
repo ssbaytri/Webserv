@@ -122,14 +122,52 @@ void Server::_acceptNewConnection() {
 
 void Server::_handleGET(const Request& request, Response& response) {
     std::string uri = request.getUri();
-    std::string filepath = _config.root + uri;
     
-    // If requesting root, serve index file
-    if (uri == "/") {
-        if (!_config.index.empty()) {
-            filepath = _config.root + "/" + _config.index[0];
-        } else {
-            filepath = _config.root + "/index.html";
+    std::string root = _config.root;
+    const LocationConfig* location = _findLocation(uri);
+
+    if (location && !location->root.empty())
+        root = location->root;
+
+    std::string filepath = root + uri;
+
+    if (uri == "/" || uri[uri.length() - 1] == '/')
+    {
+        std::vector<std::string> indexFiles;
+
+        if (location && !location->index.empty())
+            indexFiles = location->index;
+        else if (!_config.index.empty())
+            indexFiles = _config.index;
+        else
+            indexFiles.push_back("index.html");
+
+        bool indexFound = false;
+        for (size_t i = 0; i < indexFiles.size(); i++)
+        {
+            std::string indexPath = filepath + indexFiles[i];
+            if (fileExists(indexPath))
+            {
+                filepath = indexPath;
+                indexFound = true;
+                break;
+            }
+        }
+
+        if (!indexFound)
+        {
+            if (location && location->autoindex)
+            {
+                // TODO: Directory listing;
+                response.setStatus(200);
+                response.setBody("<h1>Directory listing</h1>");
+                return ;
+            }
+            else
+            {
+                _setErrorResponse(response, 403);
+                return ;
+            }
         }
     }
     
@@ -217,7 +255,7 @@ void Server::_handlePOST(const Request& request, Response& response) {
         }
         
         // Save file
-        std::string uploadPath = "./uploads/" + fileName;
+        std::string uploadPath = "./www/uploads/" + fileName;
         
         if (writeFile(uploadPath, fileContent)) {
             response.setStatus(201);

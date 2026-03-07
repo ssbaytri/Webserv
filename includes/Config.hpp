@@ -9,6 +9,7 @@
 struct LocationConfig {
     std::string path;                           // "/uploads"
     std::vector<std::string> allowedMethods;    // ["GET", "POST", "DELETE"]
+    std::vector<std::string> index;
     std::string root;                           // "/var/www/uploads" (optional override)
     bool autoindex;                             // true/false
     std::string redirect;                       // "/new-page" (for redirects)

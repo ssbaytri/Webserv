@@ -101,6 +101,11 @@ bool Config::_parseLocationBlock(std::ifstream& file, LocationConfig& location) 
         else if (tokens[0] == "client_max_body_size" && tokens.size() >= 2) {
             location.clientMaxBodySize = _parseSize(tokens[1]);
         }
+        else if (tokens[0] == "index") {
+            for (size_t i = 1; i < tokens.size(); i++) {
+                location.index.push_back(tokens[i]);
+            }
+        }
     }
     
     return false;  // Unexpected end of file
@@ -271,6 +276,8 @@ void Config::print() const {
             if (!loc.redirect.empty()) {
                 std::cout << "    Redirect: " << loc.redirect << std::endl;
             }
+            for (size_t k = 0; k < server.locations[i].index.size(); k++)
+            std::cout << "    index: " << server.locations[j].index[k] << std::endl;
         }
     }
 }
