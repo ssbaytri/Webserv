@@ -225,11 +225,13 @@ void Server::_handlePOST(const Request& request, Response& response) {
     
     const LocationConfig* location = _findLocation(request.getUri());
     size_t maxBodySize = _config.clientMaxBodySize;     //server default
+    std::string uploadDir = "./uploads";  // server default
 
     if (location && location->clientMaxBodySize > 0)
-    {
         maxBodySize = location->clientMaxBodySize;
-    }
+
+    if (location && !location->uploadStore.empty())
+        uploadDir = location->uploadStore;
 
     if (request.getContentLength() > maxBodySize)
     {
@@ -255,7 +257,7 @@ void Server::_handlePOST(const Request& request, Response& response) {
         }
         
         // Save file
-        std::string uploadPath = "./www/uploads/" + fileName;
+        std::string uploadPath = uploadDir + fileName;
         
         if (writeFile(uploadPath, fileContent)) {
             response.setStatus(201);
@@ -338,6 +340,18 @@ void Server::_processRequest(Client* client)
     }
 
     const LocationConfig* loc = _findLocation(uri);
+
+    if (loc && !loc->redirect.empty())
+    {
+        response.setStatus(301);
+        response.setHeader("Location", loc->redirect);
+        response.setHeader("Content-Length", "0");
+        response.setBody("");
+        logMessage("Redirecting " + uri + " → " + loc->redirect);
+        client->setResponse(response.toString());
+        return ;
+    }
+
     if (loc)
     {
         bool methodAllowed = false;

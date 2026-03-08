@@ -15,6 +15,7 @@ struct LocationConfig {
     std::string redirect;                       // "/new-page" (for redirects)
     std::map<std::string, std::string> cgiPass; // {".php": "/usr/bin/php-cgi"}
     size_t clientMaxBodySize;                   // Optional override
+    std::string uploadStore;
     
     LocationConfig() : autoindex(false), clientMaxBodySize(0) {}
 };
