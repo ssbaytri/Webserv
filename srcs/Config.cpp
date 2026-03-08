@@ -106,8 +106,6 @@ bool Config::_parseLocationBlock(std::ifstream& file, LocationConfig& location) 
                 location.index.push_back(tokens[i]);
             }
         }
-        else if (tokens[0] == "upload_store" && tokens.size() >= 2)
-            location.uploadStore = tokens[1];
     }
     
     return false;  // Unexpected end of file

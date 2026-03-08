@@ -193,7 +193,7 @@
         <h1>📤 Upload File</h1>
         <p class="subtitle">Upload files to webserv</p>
 
-        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+        <form id="uploadForm" action="/uploads" method="POST" enctype="multipart/form-data">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">Click to browse or drag & drop</div>
@@ -290,7 +290,7 @@
             uploadBtn.textContent = 'Uploading...';
 
             try {
-                const res = await fetch('/upload', {
+                const res = await fetch('/uploads', {
                     method: 'POST',
                     body: formData
                 });

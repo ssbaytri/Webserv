@@ -215,64 +215,59 @@ void Server::_handleGET(const Request& request, Response& response) {
 // ============================================================================
 
 void Server::_handlePOST(const Request& request, Response& response) {
-    // Check if there's content
     if (request.getContentLength() == 0) {
-        response.setStatus(400);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>400 Bad Request</h1><p>No content provided.</p></body></html>");
+        _setErrorResponse(response, 400);
         return;
     }
     
     const LocationConfig* location = _findLocation(request.getUri());
-    size_t maxBodySize = _config.clientMaxBodySize;     //server default
-    std::string uploadDir = "./uploads";  // server default
-
-    if (location && location->clientMaxBodySize > 0)
+    
+    // Body size check
+    size_t maxBodySize = _config.clientMaxBodySize;
+    if (location && location->clientMaxBodySize > 0) {
         maxBodySize = location->clientMaxBodySize;
-
-    if (location && !location->uploadStore.empty())
-        uploadDir = location->uploadStore;
-
-    if (request.getContentLength() > maxBodySize)
-    {
-        response.setStatus(413);
-        response.setBody("<html><body><h1>413 Payload Too Large</h1></body></html>");
-        logError("Request body too large: " + intToString(request.getContentLength()) + 
-                " > " + intToString(maxBodySize));
+    }
+    
+    if (request.getContentLength() > maxBodySize) {
+        _setErrorResponse(response, 413);
         return;
     }
     
-    // Handle multipart file upload
     if (request.isMultipartUpload()) {
         std::string fileName = request.getUploadedFileName();
         std::string fileContent = request.getUploadedFileContent();
         
-        // Validate filename
         if (!isPathSafe(fileName) || fileName.empty()) {
-            logError("Unsafe or empty filename: " + fileName);
-            response.setStatus(400);
-            response.setHeader("Content-Type", "text/html");
-            response.setBody("<html><body><h1>400 Bad Request</h1><p>Invalid filename.</p></body></html>");
+            _setErrorResponse(response, 400);
             return;
         }
         
-        // Save file
-        std::string uploadPath = uploadDir + fileName;
+        // === USE ROOT (same as GET/DELETE) ===
+        std::string root = _config.root;
+        if (location && !location->root.empty()) {
+            root = location->root;
+        }
         
-        if (writeFile(uploadPath, fileContent)) {
+        // Determine upload directory from URI
+        std::string uri = request.getUri();
+        std::string uploadDir = root + uri;
+        
+        // Ensure trailing slash
+        if (!uploadDir.empty() && uploadDir[uploadDir.length() - 1] != '/') {
+            uploadDir += "/";
+        }
+        
+        std::string filepath = uploadDir + fileName;
+        
+        if (writeFile(filepath, fileContent)) {
             response.setStatus(201);
-            response.setHeader("Content-Type", "text/plain");
             response.setBody("File uploaded successfully: " + fileName);
-            logMessage("File uploaded: " + uploadPath + " (" + intToString(fileContent.size()) + " bytes)");
+            logMessage("File uploaded: " + filepath);
         } else {
-            response.setStatus(500);
-            response.setHeader("Content-Type", "text/html");
-            response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to save file.</p></body></html>");
+            _setErrorResponse(response, 500);
         }
     } else {
-        response.setStatus(400);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>400 Bad Request</h1><p>Unsupported content type for POST.</p></body></html>");
+        _setErrorResponse(response, 400);
     }
 }
 
@@ -283,33 +278,32 @@ void Server::_handlePOST(const Request& request, Response& response) {
 void Server::_handleDELETE(const Request& request, Response& response) {
     std::string uri = request.getUri();
     
-    // Validate path
     if (!isPathSafe(uri)) {
-        logError("Unsafe path in DELETE request: " + uri);
-        response.setStatus(403);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>403 Forbidden</h1><p>Invalid file path.</p></body></html>");
+        _setErrorResponse(response, 403);
         return;
     }
     
-    std::string filepath = "./uploads" + uri;
+    // === USE ROOT (same as GET/POST) ===
+    std::string root = _config.root;
+    const LocationConfig* location = _findLocation(uri);
+    
+    if (location && !location->root.empty()) {
+        root = location->root;
+    }
+    
+    std::string filepath = root + uri;
+    
     logMessage("DELETE request for: " + filepath);
     
-    // Check if file exists
     if (fileExists(filepath)) {
         if (deleteFile(filepath)) {
-            response.setStatus(204);  // No Content
+            response.setStatus(204);
             logMessage("File deleted successfully: " + filepath);
         } else {
-            response.setStatus(500);
-            response.setHeader("Content-Type", "text/html");
-            response.setBody("<html><body><h1>500 Internal Server Error</h1><p>Failed to delete file.</p></body></html>");
+            _setErrorResponse(response, 500);
         }
     } else {
-        logMessage("Cannot delete - file not found: " + filepath);
-        response.setStatus(404);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>404 Not Found</h1><p>File does not exist.</p></body></html>");
+        _setErrorResponse(response, 404);
     }
 }
 
