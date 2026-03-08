@@ -517,13 +517,25 @@ const LocationConfig* Server::_findLocation(const std::string& uri) const {
     
     for (size_t i = 0; i < _config.locations.size(); i++) {
         const LocationConfig& loc = _config.locations[i];
+        size_t locLen = loc.path.length();
+        
+        // Special case: root location always matches
+        if (loc.path == "/") {
+            if (locLen > longestMatch) {
+                longestMatch = locLen;
+                bestMatch = &loc;
+            }
+            continue;
+        }
         
         // Check if URI starts with location path
-        if (uri.find(loc.path) == 0) {
-            size_t matchLen = loc.path.length();
-            if (matchLen > longestMatch) {
-                longestMatch = matchLen;
-                bestMatch = &loc;
+        if (uri.compare(0, locLen, loc.path) == 0) {
+            // Check for path boundary
+            if (uri.length() == locLen || uri[locLen] == '/') {
+                if (locLen > longestMatch) {
+                    longestMatch = locLen;
+                    bestMatch = &loc;
+                }
             }
         }
     }
