@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <stdexcept>
 #include <fstream>
+#include <dirent.h>
 
 // Constructor
 Server::Server(const ServerConfig& config) : _config(config), _serverSocket(-1) {
@@ -120,6 +121,84 @@ void Server::_acceptNewConnection() {
     _pollFds.push_back(clientPollFd);
 }
 
+std::string Server::_generateDirectoryListing(const std::string& dirPath, const std::string& uri) {
+    // Try to list directory
+    std::vector<FileInfo> files = listDirectory(dirPath);
+    
+    std::string html = "<!DOCTYPE html>\n<html>\n<head>\n";
+    html += "<meta charset=\"UTF-8\">\n";
+    html += "<title>Index of " + uri + "</title>\n";
+    html += "<style>\n";
+    html += "body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n";
+    html += ".container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 900px; margin: 0 auto; }\n";
+    html += "h1 { color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }\n";
+    html += "table { width: 100%; border-collapse: collapse; margin-top: 20px; }\n";
+    html += "th { text-align: left; padding: 10px; background: #f0f0f0; border-bottom: 2px solid #ddd; }\n";
+    html += "td { padding: 10px; border-bottom: 1px solid #eee; }\n";
+    html += "tr:hover { background: #f9f9f9; }\n";
+    html += "a { color: #0066cc; text-decoration: none; }\n";
+    html += "a:hover { text-decoration: underline; }\n";
+    html += ".directory { font-weight: bold; color: #ff9800; }\n";
+    html += ".directory:before { content: '📁 '; }\n";
+    html += ".file:before { content: '📄 '; }\n";
+    html += ".parent:before { content: '⬆️ '; }\n";
+    html += ".size { color: #999; text-align: right; }\n";
+    html += ".date { color: #666; text-align: right; }\n";
+    html += ".empty { color: #999; font-style: italic; text-align: center; padding: 40px; }\n";
+    html += "footer { margin-top: 30px; text-align: center; color: #999; font-size: 0.9em; border-top: 1px solid #ddd; padding-top: 20px; }\n";
+    html += "</style>\n";
+    html += "</head>\n<body>\n";
+    html += "<div class=\"container\">\n";
+    html += "<h1>Index of " + uri + "</h1>\n";
+    
+    // Check if directory listing is empty
+    if (files.empty()) {
+        html += "<p class=\"empty\">Directory is empty</p>\n";
+    } else {
+        html += "<table>\n";
+        html += "<thead>\n<tr>\n";
+        html += "<th>Name</th>\n";
+        html += "<th class=\"size\">Size</th>\n";
+        html += "<th class=\"date\">Modified</th>\n";
+        html += "</tr>\n</thead>\n<tbody>\n";
+        
+        // Add parent directory link (unless at root)
+        if (uri != "/") {
+            html += "<tr>\n";
+            html += "<td><a href=\"../\" class=\"parent\">Parent Directory</a></td>\n";
+            html += "<td class=\"size\">-</td>\n";
+            html += "<td class=\"date\">-</td>\n";
+            html += "</tr>\n";
+        }
+        
+        // Add each file/directory
+        for (size_t i = 0; i < files.size(); i++) {
+            const FileInfo& file = files[i];
+            
+            std::string className = file.isDirectory ? "directory" : "file";
+            html += "<tr>\n";
+            html += "<td><a href=\"" + file.name + "\" class=\"" + className + "\">" + file.name + "</a></td>\n";
+            
+            if (file.isDirectory) {
+                html += "<td class=\"size\">-</td>\n";
+            } else {
+                html += "<td class=\"size\">" + formatSize(file.size) + "</td>\n";
+            }
+            
+            html += "<td class=\"date\">" + formatTime(file.modified) + "</td>\n";
+            html += "</tr>\n";
+        }
+        
+        html += "</tbody>\n</table>\n";
+    }
+    
+    html += "<footer>webserv - HTTP Server</footer>\n";
+    html += "</div>\n";
+    html += "</body>\n</html>";
+    
+    return html;
+}
+
 void Server::_handleGET(const Request& request, Response& response) {
     std::string uri = request.getUri();
     
@@ -158,40 +237,17 @@ void Server::_handleGET(const Request& request, Response& response) {
         {
             if (location && location->autoindex)
             {
-                std::vector<std::string> files = listDirectory(filepath);
-
-                std::string html = "<!DOCTYPE html>\n<html>\n<head>\n";
-                html += "<title>Index of " + uri + "</title>\n";
-                html += "<style>\n";
-                html += "body { font-family: Arial, sans-serif; margin: 40px; }\n";
-                html += "h1 { color: #333; }\n";
-                html += "ul { list-style: none; padding: 0; }\n";
-                html += "li { padding: 8px; border-bottom: 1px solid #eee; }\n";
-                html += "a { color: #0066cc; text-decoration: none; }\n";
-                html += "a:hover { text-decoration: underline; }\n";
-                html += ".directory { font-weight: bold; }\n";
-                html += "</style>\n";
-                html += "</head>\n<body>\n";
-                html += "<h1>Index of " + uri + "</h1>\n";
-                html += "<hr>\n<ul>\n";
-
-                if (uri != "/")
-                    html += "<li><a href=\"../\">../</a> (Parent Directory)</li>\n";
-
-                for (size_t i = 0; i < files.size(); i++) {
-                    std::string name = files[i];
-                    bool isDir = (name[name.length() - 1] == '/');
-                    
-                    std::string className = isDir ? " class=\"directory\"" : "";
-                    html += "<li><a href=\"" + name + "\"" + className + ">" + name + "</a></li>\n";
+                // Check if directory is accessible
+                if (!isDirectory(filepath)) {
+                    _setErrorResponse(response, 404);
+                    return;
                 }
                 
-                html += "</ul>\n<hr>\n";
-                html += "<p><em>webserv</em></p>\n";
-                html += "</body>\n</html>";
-
+                // Generate directory listing
+                std::string html = _generateDirectoryListing(filepath, uri);
+                
                 response.setStatus(200);
-                response.setHeader("Content-Type", "text/html");
+                response.setHeader("Content-Type", "text/html; charset=UTF-8");
                 response.setHeader("Content-Length", intToString(html.size()));
                 response.setBody(html);
                 

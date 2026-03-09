@@ -5,6 +5,13 @@
 #include <vector>
 #include <sstream>
 
+struct FileInfo {
+    std::string name;
+    bool isDirectory;
+    size_t size;
+    time_t modified;
+};
+
 std::string intToString(int num);
 void        logMessage(const std::string& message);
 void        logError(const std::string& error);
@@ -18,6 +25,6 @@ std::string 				getMimeType(const std::string& path);
 bool        				deleteFile(const std::string& path);
 bool        				isPathSafe(const std::string& path);
 bool						writeFile(const std::string& filePath, const std::string& content);
-std::vector<std::string>	listDirectory(const std::string& path);
+std::vector<FileInfo>	listDirectory(const std::string& path);
 
 #endif

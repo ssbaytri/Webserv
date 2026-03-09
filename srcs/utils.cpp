@@ -177,31 +177,45 @@ bool writeFile(const std::string& filePath, const std::string& content)
     return true;
 }
 
-std::vector<std::string> listDirectory(const std::string& path)
-{
-    std::vector<std::string> files;
+std::vector<FileInfo> listDirectoryDetailed(const std::string& path) {
+    std::vector<FileInfo> files;
     DIR* dir = opendir(path.c_str());
-    if (!dir)
-    {
-        logError("Failed to open directory: " + path);
+    
+    if (!dir) {
         return files;
     }
-
+    
     struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL)
-    {
+    while ((entry = readdir(dir)) != NULL) {
         std::string name = entry->d_name;
-
-        if (name == "." || name == "..")
+        
+        if (name == "." || name == "..") {
             continue;
-
+        }
+        
+        FileInfo info;
+        info.name = name;
+        
         std::string fullPath = path + "/" + name;
-        if (isDirectory(fullPath))
-            name += "/";
-            
-        files.push_back(name);
+        struct stat st;
+        
+        if (stat(fullPath.c_str(), &st) == 0) {
+            info.isDirectory = S_ISDIR(st.st_mode);
+            info.size = st.st_size;
+            info.modified = st.st_mtime;
+        } else {
+            info.isDirectory = false;
+            info.size = 0;
+            info.modified = 0;
+        }
+        
+        if (info.isDirectory) {
+            info.name += "/";
+        }
+        
+        files.push_back(info);
     }
-
+    
     closedir(dir);
     return files;
 }

@@ -41,8 +41,8 @@ class Server
 		void	_sendResponse(int fd, Client* client);
 
 		void	_setErrorResponse(Response& response, int statusCode);
-
 		const LocationConfig* _findLocation(const std::string& uri) const;
+		std::string _generateDirectoryListing(const std::string& dirPath, const std::string& uri);
 
 	public:
 		Server(const ServerConfig& config);
