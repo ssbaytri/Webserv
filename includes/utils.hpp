@@ -2,22 +2,22 @@
 #define UTILS_HPP
 
 #include <string>
+#include <vector>
 #include <sstream>
 
-// String utilities
 std::string intToString(int num);
 void        logMessage(const std::string& message);
 void        logError(const std::string& error);
-
 std::string	toLowerCase(const std::string& str);
 std::string trim(const std::string& str);
 
-bool        fileExists(const std::string& path);
-bool        isDirectory(const std::string& path);
-std::string readFile(const std::string& path);
-std::string getMimeType(const std::string& path);
-bool        deleteFile(const std::string& path);
-bool        isPathSafe(const std::string& path);
-bool writeFile(const std::string& filePath, const std::string& content);
+bool        				fileExists(const std::string& path);
+bool        				isDirectory(const std::string& path);
+std::string 				readFile(const std::string& path);
+std::string 				getMimeType(const std::string& path);
+bool        				deleteFile(const std::string& path);
+bool        				isPathSafe(const std::string& path);
+bool						writeFile(const std::string& filePath, const std::string& content);
+std::vector<std::string>	listDirectory(const std::string& path);
 
 #endif

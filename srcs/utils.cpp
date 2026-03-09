@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <unistd.h>
+#include <dirent.h>
 
 #define COLOR_ORANGE "\033[38;5;208m"
 #define COLOR_RED "\033[31m"
@@ -174,4 +175,33 @@ bool writeFile(const std::string& filePath, const std::string& content)
     file.close();
     
     return true;
+}
+
+std::vector<std::string> listDirectory(const std::string& path)
+{
+    std::vector<std::string> files;
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+    {
+        logError("Failed to open directory: " + path);
+        return files;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+
+        if (name == "." || name == "..")
+            continue;
+
+        std::string fullPath = path + "/" + name;
+        if (isDirectory(fullPath))
+            name += "/";
+            
+        files.push_back(name);
+    }
+
+    closedir(dir);
+    return files;
 }

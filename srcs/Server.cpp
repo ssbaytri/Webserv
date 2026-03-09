@@ -158,10 +158,45 @@ void Server::_handleGET(const Request& request, Response& response) {
         {
             if (location && location->autoindex)
             {
-                // TODO: Directory listing;
+                std::vector<std::string> files = listDirectory(filepath);
+
+                std::string html = "<!DOCTYPE html>\n<html>\n<head>\n";
+                html += "<title>Index of " + uri + "</title>\n";
+                html += "<style>\n";
+                html += "body { font-family: Arial, sans-serif; margin: 40px; }\n";
+                html += "h1 { color: #333; }\n";
+                html += "ul { list-style: none; padding: 0; }\n";
+                html += "li { padding: 8px; border-bottom: 1px solid #eee; }\n";
+                html += "a { color: #0066cc; text-decoration: none; }\n";
+                html += "a:hover { text-decoration: underline; }\n";
+                html += ".directory { font-weight: bold; }\n";
+                html += "</style>\n";
+                html += "</head>\n<body>\n";
+                html += "<h1>Index of " + uri + "</h1>\n";
+                html += "<hr>\n<ul>\n";
+
+                if (uri != "/")
+                    html += "<li><a href=\"../\">../</a> (Parent Directory)</li>\n";
+
+                for (size_t i = 0; i < files.size(); i++) {
+                    std::string name = files[i];
+                    bool isDir = (name[name.length() - 1] == '/');
+                    
+                    std::string className = isDir ? " class=\"directory\"" : "";
+                    html += "<li><a href=\"" + name + "\"" + className + ">" + name + "</a></li>\n";
+                }
+                
+                html += "</ul>\n<hr>\n";
+                html += "<p><em>webserv</em></p>\n";
+                html += "</body>\n</html>";
+
                 response.setStatus(200);
-                response.setBody("<h1>Directory listing</h1>");
-                return ;
+                response.setHeader("Content-Type", "text/html");
+                response.setHeader("Content-Length", intToString(html.size()));
+                response.setBody(html);
+                
+                logMessage("Generated directory listing for: " + filepath);
+                return;
             }
             else
             {
