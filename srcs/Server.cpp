@@ -7,6 +7,7 @@
 #include <fstream>
 #include <dirent.h>
 
+
 // Constructor
 Server::Server(const ServerConfig& config) : _config(config), _serverSocket(-1) {
     _setupSocket();
@@ -122,7 +123,6 @@ void Server::_acceptNewConnection() {
 }
 
 std::string Server::_generateDirectoryListing(const std::string& dirPath, const std::string& uri) {
-    // Try to list directory
     std::vector<FileInfo> files = listDirectory(dirPath);
     
     std::string html = "<!DOCTYPE html>\n<html>\n<head>\n";
@@ -237,13 +237,19 @@ void Server::_handleGET(const Request& request, Response& response) {
         {
             if (location && location->autoindex)
             {
-                // Check if directory is accessible
                 if (!isDirectory(filepath)) {
                     _setErrorResponse(response, 404);
                     return;
                 }
                 
-                // Generate directory listing
+                DIR* testDir = opendir(filepath.c_str());
+                if (!testDir) {
+                    logError("Permission denied for directory: " + filepath);
+                    _setErrorResponse(response, 403);
+                    return;
+                }
+                closedir(testDir);
+                
                 std::string html = _generateDirectoryListing(filepath, uri);
                 
                 response.setStatus(200);

@@ -177,7 +177,7 @@ bool writeFile(const std::string& filePath, const std::string& content)
     return true;
 }
 
-std::vector<FileInfo> listDirectoryDetailed(const std::string& path) {
+std::vector<FileInfo> listDirectory(const std::string& path) {
     std::vector<FileInfo> files;
     DIR* dir = opendir(path.c_str());
     
@@ -218,4 +218,27 @@ std::vector<FileInfo> listDirectoryDetailed(const std::string& path) {
     
     closedir(dir);
     return files;
+}
+
+std::string formatSize(size_t bytes) {
+    const char* units[] = {"B", "KB", "MB", "GB"};
+    int unit = 0;
+    double size = static_cast<double>(bytes);
+    
+    while (size >= 1024.0 && unit < 3) {
+        size /= 1024.0;
+        unit++;
+    }
+    
+    std::stringstream ss;
+    ss.precision(1);
+    ss << std::fixed << size << " " << units[unit];
+    return ss.str();
+}
+
+std::string formatTime(time_t time) {
+    char buffer[80];
+    struct tm* timeinfo = localtime(&time);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", timeinfo);
+    return std::string(buffer);
 }
