@@ -16,17 +16,18 @@
 #include "Request.hpp"
 #include "Response.hpp"
 
+#define MAX_EVENTS 1024
 #define TIMEOUT 5000
 
 class Server
 {
 	private:
-		ServerConfig				_config;
-		int							_serverSocket;
+		std::vector<ServerConfig>	_configs;
+		std::vector<int>			_serverSockets;
 		std::vector<struct pollfd>	_pollFds;
 		std::map<int, Client*>		_clients;
 
-		void    _setupSocket();
+		void    _setupSockets();
 		void    _setNonBlocking(int fd);
 		void    _acceptNewConnection();
 		void    _handleClient(int fd);
@@ -45,7 +46,7 @@ class Server
 		std::string _generateDirectoryListing(const std::string& dirPath, const std::string& uri);
 
 	public:
-		Server(const ServerConfig& config);
+		Server(const std::vector<ServerConfig>& configs);
 		~Server();
 
 		void run();

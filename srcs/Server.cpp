@@ -9,8 +9,10 @@
 
 
 // Constructor
-Server::Server(const ServerConfig& config) : _config(config), _serverSocket(-1) {
-    _setupSocket();
+Server::Server(const std::vector<ServerConfig>& configs) : _configs(configs), _serverSocket(-1) {
+    if (_configs.empty())
+        throw std::runtime_error("No server configurations provided");
+    _setupSockets();
 }
 
 // Destructor
@@ -23,10 +25,9 @@ Server::~Server() {
     }
     _clients.clear();
     
-    // Close server socket
-    if (_serverSocket != -1) {
-        close(_serverSocket);
-    }
+    // clear all server sockets
+    for (size_t i = 0; i < _serverSockets.size(); i++)
+        close(_serverSockets[i]);
     
     logMessage("Server shut down");
 }

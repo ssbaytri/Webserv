@@ -31,17 +31,9 @@ int main(int argc, char **argv)
 	config.print();
 
 	const std::vector<ServerConfig>& servers = config.getServers();
-
-	if (servers.empty())
-	{
-		logError("No servers configured");
-        return 1;
-	}
-	
     try
     {
-        logMessage("Starting webserv using config: " + intToString(servers[0].port));
-        Server server(servers[0]);
+        Server server(servers);
         server.run();
     }
     catch (const std::exception& e)
