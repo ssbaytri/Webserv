@@ -635,8 +635,18 @@ const LocationConfig* Server::_findLocation(const std::string& uri) const {
         
         // Check if URI starts with location path
         if (uri.compare(0, locLen, loc.path) == 0) {
-            // Check for path boundary
-            if (uri.length() == locLen || uri[locLen] == '/') {
+            
+            // Require trailing slash or more path (NOT exact match)
+            if (uri.length() > locLen && uri[locLen] == '/') {
+                // Good: /james/something
+                if (locLen > longestMatch) {
+                    longestMatch = locLen;
+                    bestMatch = &loc;
+                }
+            }
+            // Exact match only if location path ends with /
+            else if (uri.length() == locLen && loc.path[locLen - 1] == '/') {
+                // Good: /james/ matches location /james/
                 if (locLen > longestMatch) {
                     longestMatch = locLen;
                     bestMatch = &loc;
