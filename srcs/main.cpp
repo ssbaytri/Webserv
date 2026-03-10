@@ -28,7 +28,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-	// config.print();
+	config.print();
 
 	const std::vector<ServerConfig>& servers = config.getServers();
 
