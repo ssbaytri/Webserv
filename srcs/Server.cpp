@@ -9,7 +9,7 @@
 
 
 // Constructor
-Server::Server(const std::vector<ServerConfig>& configs) : _configs(configs), _serverSocket(-1) {
+Server::Server(const std::vector<ServerConfig>& configs) : _configs(configs) {
     if (_configs.empty())
         throw std::runtime_error("No server configurations provided");
     _setupSockets();
@@ -19,7 +19,7 @@ Server::Server(const std::vector<ServerConfig>& configs) : _configs(configs), _s
 Server::~Server() {
     // Clean up all clients
     for (std::map<int, Client*>::iterator it = _clients.begin();
-         it != _clients.end(); ++it) {
+        it != _clients.end(); ++it) {
         delete it->second;
         close(it->first);
     }
@@ -32,93 +32,111 @@ Server::~Server() {
     logMessage("Server shut down");
 }
 
-// Setup socket
-void Server::_setupSocket() {
+int Server::_createListeningSocket(int port)
+{
     struct sockaddr_in serverAddr;
-    
-    // 1. Create socket
-    _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (_serverSocket < 0) {
-        throw std::runtime_error("Failed to create socket");
+
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0)
+    {
+        logError("Failed to create socket for port " + intToString(port));
+        return (-1);
     }
-    
-    // 2. Set socket options (SO_REUSEADDR to avoid "Address already in use")
+
     int opt = 1;
-    if (setsockopt(_serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        close(_serverSocket);
-        throw std::runtime_error("Failed to set socket options");
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        close(serverSocket);
+        logError("Failed to set socket options for port " + intToString(port));
+        return -1;
     }
-    
-    // 3. Set non-blocking mode
-    _setNonBlocking(_serverSocket);
-    
-    // 4. Setup address structure
+
+    _setNonBlocking(serverSocket);
+
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;  // Listen on all interfaces
-    serverAddr.sin_port = htons(_config.port);
-    
-    // 5. Bind socket to address
-    if (bind(_serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-        close(_serverSocket);
-        throw std::runtime_error("Failed to bind socket to port " + intToString(_config.port));
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(port);
+
+    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0)
+    {
+        close(serverSocket);
+        logError("Failed to bind socket to port " + intToString(port));
+        return (-1);
     }
-    
-    // 6. Start listening
-    if (listen(_serverSocket, 128) < 0) {  // 128 is backlog size
-        close(_serverSocket);
-        throw std::runtime_error("Failed to listen on socket");
+
+    if (listen(serverSocket, 128) < 0)
+    {
+        close(serverSocket);
+        logError("Failed to listen on port " + intToString(port));
+        return (-1);
     }
-    
-    // 7. Add server socket to poll
-    struct pollfd serverPollFd;
-    serverPollFd.fd = _serverSocket;
-    serverPollFd.events = POLLIN;  // Monitor for incoming connections
-    serverPollFd.revents = 0;
-    _pollFds.push_back(serverPollFd);
-    
-    logMessage("Server listening on port " + intToString(_config.port));
+    return (serverSocket);
 }
 
-// Set socket to non-blocking mode
-void Server::_setNonBlocking(int fd) {
+void Server::_setupSockets()
+{
+    for (size_t i = 0; i < _configs.size(); i++)
+    {
+        int port = _configs[i].port;
+
+        int serverSocket = _createListeningSocket(port);
+        if (serverSocket < 0)
+            throw std::runtime_error("Failed to create socket for port " + intToString(port));
+
+        _serverSockets.push_back(serverSocket);
+
+        _socketToConfig[serverSocket]  = &_configs[i];
+
+        // Add to poll
+        struct pollfd serverPollFd;
+        serverPollFd.fd = serverSocket;
+        serverPollFd.events = POLLIN;
+        serverPollFd.revents = 0;
+        _pollFds.push_back(serverPollFd);
+
+        logMessage("Server listening on port " + intToString(port));
+    }
+}
+
+
+void Server::_setNonBlocking(int fd)
+{
     int flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
+    if (flags < 0) 
         throw std::runtime_error("Failed to get socket flags");
-    }
     
-    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) 
         throw std::runtime_error("Failed to set non-blocking mode");
-    }
 }
 
-// Accept new connection
-void Server::_acceptNewConnection() {
+
+void Server::_acceptNewConnection(int serverSocket)
+{
     struct sockaddr_in clientAddr;
     socklen_t clientLen = sizeof(clientAddr);
-    
-    int clientSocket = accept(_serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
-    
-    if (clientSocket < 0)
-        return;
-    
-    // Set client socket to non-blocking
+
+    int clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
+    if (clientSocket < 0) return;
+
     _setNonBlocking(clientSocket);
-    
-    // Get client IP for logging
+
     char clientIP[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &clientAddr.sin_addr, clientIP, INET_ADDRSTRLEN);
-    logMessage("New connection from " + std::string(clientIP) + 
-               " on socket " + intToString(clientSocket));
+
+    ServerConfig* config = _socketToConfig[serverSocket];
     
-    // Create Client object
+    logMessage("New connection from " + std::string(clientIP) + 
+               " on port " + intToString(config->port) +
+               " (socket " + intToString(clientSocket) + ")");
+
     Client* newClient = new Client(clientSocket);
     _clients[clientSocket] = newClient;
-    
-    // Add to poll
+
+    _socketToConfig[clientSocket] = config;
+
     struct pollfd clientPollFd;
     clientPollFd.fd = clientSocket;
-    clientPollFd.events = POLLIN;  // Start by reading the request
+    clientPollFd.events = POLLIN;
     clientPollFd.revents = 0;
     _pollFds.push_back(clientPollFd);
 }
@@ -308,10 +326,6 @@ void Server::_handleGET(const Request& request, Response& response) {
     }
 }
 
-// ============================================================================
-// HANDLE POST REQUEST
-// ============================================================================
-
 void Server::_handlePOST(const Request& request, Response& response) {
     if (request.getContentLength() == 0) {
         _setErrorResponse(response, 400);
@@ -369,10 +383,6 @@ void Server::_handlePOST(const Request& request, Response& response) {
     }
 }
 
-// ============================================================================
-// HANDLE DELETE REQUEST
-// ============================================================================
-
 void Server::_handleDELETE(const Request& request, Response& response) {
     std::string uri = request.getUri();
     
@@ -405,7 +415,7 @@ void Server::_handleDELETE(const Request& request, Response& response) {
     }
 }
 
-void Server::_processRequest(Client* client)
+void Server::_processRequest(Client* client, const ServerConfig& config)
 {
     Request request;
     Response response;
@@ -481,9 +491,10 @@ void Server::_readRequest(int fd, Client* client) {
         
         if (client->isRequestComplete()) {
             logMessage("Request received from socket " + intToString(fd));
-            _processRequest(client);
+
+            ServerConfig* config = _socketToConfig[fd];
+            _processRequest(client, *config);
             
-            // Switch to sending mode
             for (size_t i = 0; i < _pollFds.size(); ++i) {
                 if (_pollFds[i].fd == fd) {
                     _pollFds[i].events = POLLOUT;
@@ -521,7 +532,8 @@ void    Server::_sendResponse(int fd, Client* client)
     }
 }
 
-void Server::_handleClient(int fd) {
+void Server::_handleClient(int fd)
+{
     Client* client = _clients[fd];
     if (!client) {
         return;
@@ -534,26 +546,21 @@ void Server::_handleClient(int fd) {
     }
 }
 
-// Close connection
-void Server::_closeConnection(int fd) {
-    // Remove from clients map
+void Server::_closeConnection(int fd)
+{
     std::map<int, Client*>::iterator it = _clients.find(fd);
     if (it != _clients.end()) {
         delete it->second;
         _clients.erase(it);
     }
     
-    // Remove from poll array
     _removeFromPoll(fd);
-    
-    // Close socket
     close(fd);
 }
 
-// Remove from poll array
 void Server::_removeFromPoll(int fd) {
     for (std::vector<struct pollfd>::iterator it = _pollFds.begin();
-         it != _pollFds.end(); ++it) {
+        it != _pollFds.end(); ++it) {
         if (it->fd == fd) {
             _pollFds.erase(it);
             break;
@@ -563,58 +570,67 @@ void Server::_removeFromPoll(int fd) {
 
 // Main server loop
 void Server::run() {
-    logMessage("Server is running... Press Ctrl+C to stop");
+    logMessage("Server is running on " + intToString(_configs.size()) + " port(s)");
     
-    while (true) {
-        // Call poll with timeout
+    while (true)
+    {
         int pollCount = poll(&_pollFds[0], _pollFds.size(), TIMEOUT);
-        
-        if (pollCount < 0) {
-            logError("Poll error");
-            break;
+
+        if (pollCount < 0)
+        {
+            logError("Poll Error");
+            break ;
         }
-        
-        if (pollCount == 0) {
-            // Timeout - could check for inactive clients here
-            continue;
-        }
-        
-        // Check which file descriptors are ready
-        for (size_t i = 0; i < _pollFds.size(); ++i) {
-            if (_pollFds[i].revents == 0) {
-                continue;  // No events on this fd
-            }
+
+        if (pollCount == 0)
+            continue;   // TIMEOUT
+
+        for (size_t i = 0; i < _pollFds.size(); i++)
+        {
+            if (_pollFds[i].revents == 0)
+                continue;
             
-            // Check for errors
-            if (_pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-                if (_pollFds[i].fd != _serverSocket) {
+            if (_pollFds[i].revents & (POLLERR | POLLHUP | POLLNVAL))
+            {
+                bool isServerSocket = false;
+                for (size_t j = 0; j < _serverSockets.size(); j++)
+                {
+                    if (_pollFds[i].fd == _serverSockets[j])
+                    {
+                        isServerSocket = true;
+                        break ;
+                    }
+                }
+
+                if (!isServerSocket)
+                {
                     logMessage("Connection closed on socket " + intToString(_pollFds[i].fd));
                     _closeConnection(_pollFds[i].fd);
                 }
                 continue;
             }
-            
-            // Server socket - new connection
-            if (_pollFds[i].fd == _serverSocket) {
-                if (_pollFds[i].revents & POLLIN) {
-                    _acceptNewConnection();
+
+            bool isServerSocket = false;
+            for (size_t j = 0; j < _serverSockets.size(); j++)
+            {
+                if (_pollFds[i].fd == _serverSockets[j])
+                {
+                    if (_pollFds[i].revents & POLLIN)
+                        _acceptNewConnection(_serverSockets[j]);
+                    isServerSocket = true;
+                    break ;
                 }
             }
-            // Client socket - read or write
-            else {
-                if (_pollFds[i].revents & POLLIN) {
+
+            if (!isServerSocket)
+            {
+                if (_pollFds[i].revents & POLLIN)
                     _handleClient(_pollFds[i].fd);
-                } else if (_pollFds[i].revents & POLLOUT) {
+                else if (_pollFds[i].revents & POLLOUT)
                     _handleClient(_pollFds[i].fd);
-                }
             }
         }
     }
-}
-
-// Getters
-int Server::getPort() const {
-    return _config.port;
 }
 
 const LocationConfig* Server::_findLocation(const std::string& uri) const {

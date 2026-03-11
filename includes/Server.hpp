@@ -16,26 +16,27 @@
 #include "Request.hpp"
 #include "Response.hpp"
 
-#define MAX_EVENTS 1024
 #define TIMEOUT 5000
 
 class Server
 {
 	private:
-		std::vector<ServerConfig>	_configs;
-		std::vector<int>			_serverSockets;
-		std::vector<struct pollfd>	_pollFds;
-		std::map<int, Client*>		_clients;
+		std::vector<ServerConfig>		_configs;
+		std::map<int, ServerConfig*>	_socketToConfig;
+		std::vector<int>				_serverSockets;
+		std::vector<struct pollfd>		_pollFds;
+		std::map<int, Client*>			_clients;
 
 		void    _setupSockets();
+		int		_createListeningSocket(int port);
 		void    _setNonBlocking(int fd);
-		void    _acceptNewConnection();
+		void    _acceptNewConnection(int serverSocket);
 		void    _handleClient(int fd);
 		void    _closeConnection(int fd);
 		void    _removeFromPoll(int fd);
 
 		void	_readRequest(int fd, Client* client);
-		void	_processRequest(Client* client);
+		void	_processRequest(Client* client, const ServerConfig& config);
 		void	_handleGET(const Request& request, Response& response);
 		void	_handlePOST(const Request& request, Response& response);
 		void	_handleDELETE(const Request& request, Response& response);
@@ -48,10 +49,7 @@ class Server
 	public:
 		Server(const std::vector<ServerConfig>& configs);
 		~Server();
-
 		void run();
-
-		int getPort() const;
 };
 
 #endif
