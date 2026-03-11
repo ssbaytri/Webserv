@@ -37,13 +37,13 @@ class Server
 
 		void	_readRequest(int fd, Client* client);
 		void	_processRequest(Client* client, const ServerConfig& config);
-		void	_handleGET(const Request& request, Response& response);
-		void	_handlePOST(const Request& request, Response& response);
-		void	_handleDELETE(const Request& request, Response& response);
+		void	_handleGET(const Request& request, Response& response, const ServerConfig& config);
+		void	_handlePOST(const Request& request, Response& response, const ServerConfig& config);
+		void	_handleDELETE(const Request& request, Response& response, const ServerConfig& config);
 		void	_sendResponse(int fd, Client* client);
 
-		void	_setErrorResponse(Response& response, int statusCode);
-		const LocationConfig* _findLocation(const std::string& uri) const;
+		void	_setErrorResponse(Response& response, int statusCode, const ServerConfig& config);
+		const LocationConfig* _findLocation(const std::string& uri, const ServerConfig& config) const;
 		std::string _generateDirectoryListing(const std::string& dirPath, const std::string& uri);
 
 	public:

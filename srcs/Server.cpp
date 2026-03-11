@@ -218,11 +218,12 @@ std::string Server::_generateDirectoryListing(const std::string& dirPath, const 
     return html;
 }
 
-void Server::_handleGET(const Request& request, Response& response) {
+void Server::_handleGET(const Request& request, Response& response, const ServerConfig& config)
+{
     std::string uri = request.getUri();
     
-    std::string root = _config.root;
-    const LocationConfig* location = _findLocation(uri);
+    std::string root = config.root;
+    const LocationConfig* location = _findLocation(uri, config);
 
     if (location && !location->root.empty())
         root = location->root;
@@ -235,8 +236,8 @@ void Server::_handleGET(const Request& request, Response& response) {
 
         if (location && !location->index.empty())
             indexFiles = location->index;
-        else if (!_config.index.empty())
-            indexFiles = _config.index;
+        else if (!config.index.empty())
+            indexFiles = config.index;
         else
             indexFiles.push_back("index.html");
 
@@ -257,14 +258,14 @@ void Server::_handleGET(const Request& request, Response& response) {
             if (location && location->autoindex)
             {
                 if (!isDirectory(filepath)) {
-                    _setErrorResponse(response, 404);
+                    _setErrorResponse(response, 404, config);
                     return;
                 }
                 
                 DIR* testDir = opendir(filepath.c_str());
                 if (!testDir) {
                     logError("Permission denied for directory: " + filepath);
-                    _setErrorResponse(response, 403);
+                    _setErrorResponse(response, 403, config);
                     return;
                 }
                 closedir(testDir);
@@ -281,7 +282,7 @@ void Server::_handleGET(const Request& request, Response& response) {
             }
             else
             {
-                _setErrorResponse(response, 403);
+                _setErrorResponse(response, 403, config);
                 return ;
             }
         }
@@ -290,7 +291,8 @@ void Server::_handleGET(const Request& request, Response& response) {
     logMessage("Serving file: " + filepath);
     
     // Check if file exists
-    if (fileExists(filepath)) {
+    if (fileExists(filepath))
+    {
         std::string content = readFile(filepath);
         
         if (!content.empty()) {
@@ -305,43 +307,34 @@ void Server::_handleGET(const Request& request, Response& response) {
             response.setHeader("Content-Type", "text/html");
             response.setBody("<html><body><h1>500 Internal Server Error</h1></body></html>");
         }
-    } else {
+    }
+    else
+    {
         logMessage("File not found: " + filepath);
         response.setStatus(404);
         response.setHeader("Content-Type", "text/html");
-        
-        // Use custom error page if configured
-        std::map<int, std::string>::const_iterator it = _config.errorPages.find(404);
-        if (it != _config.errorPages.end()) {
-            std::string errorPagePath = _config.root + it->second;
-            if (fileExists(errorPagePath)) {
-                std::string errorContent = readFile(errorPagePath);
-                response.setBody(errorContent);
-                return;
-            }
-        }
-        
-        // Default 404 page
         response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
     }
 }
 
-void Server::_handlePOST(const Request& request, Response& response) {
-    if (request.getContentLength() == 0) {
-        _setErrorResponse(response, 400);
+void Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config)
+{
+    if (request.getContentLength() == 0)
+    {
+        _setErrorResponse(response, 400, config);
         return;
     }
     
-    const LocationConfig* location = _findLocation(request.getUri());
+    const LocationConfig* location = _findLocation(request.getUri(), config);
     
     // Body size check
-    size_t maxBodySize = _config.clientMaxBodySize;
+    size_t maxBodySize = config.clientMaxBodySize;
     if (location && location->clientMaxBodySize > 0) {
         maxBodySize = location->clientMaxBodySize;
     }
     
     if (request.getContentLength() > maxBodySize) {
-        _setErrorResponse(response, 413);
+        _setErrorResponse(response, 413, config);
         return;
     }
     
@@ -350,12 +343,12 @@ void Server::_handlePOST(const Request& request, Response& response) {
         std::string fileContent = request.getUploadedFileContent();
         
         if (!isPathSafe(fileName) || fileName.empty()) {
-            _setErrorResponse(response, 400);
+            _setErrorResponse(response, 400, config);
             return;
         }
         
         // === USE ROOT (same as GET/DELETE) ===
-        std::string root = _config.root;
+        std::string root = config.root;
         if (location && !location->root.empty()) {
             root = location->root;
         }
@@ -376,24 +369,25 @@ void Server::_handlePOST(const Request& request, Response& response) {
             response.setBody("File uploaded successfully: " + fileName);
             logMessage("File uploaded: " + filepath);
         } else {
-            _setErrorResponse(response, 500);
+            _setErrorResponse(response, 500, config);
         }
     } else {
-        _setErrorResponse(response, 400);
+        _setErrorResponse(response, 400, config);
     }
 }
 
-void Server::_handleDELETE(const Request& request, Response& response) {
+void Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config)
+{
     std::string uri = request.getUri();
     
     if (!isPathSafe(uri)) {
-        _setErrorResponse(response, 403);
+        _setErrorResponse(response, 403, config);
         return;
     }
     
     // === USE ROOT (same as GET/POST) ===
-    std::string root = _config.root;
-    const LocationConfig* location = _findLocation(uri);
+    std::string root = config.root;
+    const LocationConfig* location = _findLocation(uri, config);
     
     if (location && !location->root.empty()) {
         root = location->root;
@@ -408,10 +402,10 @@ void Server::_handleDELETE(const Request& request, Response& response) {
             response.setStatus(204);
             logMessage("File deleted successfully: " + filepath);
         } else {
-            _setErrorResponse(response, 500);
+            _setErrorResponse(response, 500, config);
         }
     } else {
-        _setErrorResponse(response, 404);
+        _setErrorResponse(response, 404, config);
     }
 }
 
@@ -436,12 +430,12 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     
     if (method != "GET" && method != "POST" && method != "DELETE")
     {
-        _setErrorResponse(response, 501);
+        _setErrorResponse(response, 501, config);
         client->setResponse(response.toString());
         return;
     }
 
-    const LocationConfig* loc = _findLocation(uri);
+    const LocationConfig* loc = _findLocation(uri, config);
 
     if (loc && !loc->redirect.empty())
     {
@@ -466,18 +460,18 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
             }
         }
         if (!methodAllowed) {
-            _setErrorResponse(response, 405);
+            _setErrorResponse(response, 405, config);
             client->setResponse(response.toString());
             return ;
         }
     }
 
     if (method == "GET")
-        _handleGET(request, response);
+        _handleGET(request, response, config);
     else if (method == "POST")
-        _handlePOST(request, response);
+        _handlePOST(request, response, config);
     else if (method == "DELETE")
-        _handleDELETE(request, response);
+        _handleDELETE(request, response, config);
     client->setResponse(response.toString());
 }
 
@@ -633,12 +627,12 @@ void Server::run() {
     }
 }
 
-const LocationConfig* Server::_findLocation(const std::string& uri) const {
+const LocationConfig* Server::_findLocation(const std::string& uri, const ServerConfig& config) const {
     const LocationConfig* bestMatch = NULL;
     size_t longestMatch = 0;
     
-    for (size_t i = 0; i < _config.locations.size(); i++) {
-        const LocationConfig& loc = _config.locations[i];
+    for (size_t i = 0; i < config.locations.size(); i++) {
+        const LocationConfig& loc = config.locations[i];
         size_t locLen = loc.path.length();
         
         // Special case: root location always matches
@@ -675,14 +669,14 @@ const LocationConfig* Server::_findLocation(const std::string& uri) const {
     return bestMatch;
 }
 
-void Server::_setErrorResponse(Response& response, int statusCode)
+void Server::_setErrorResponse(Response& response, int statusCode, const ServerConfig& config)
 {
     response.setStatus(statusCode);
     response.setHeader("Content-Type", "text/html");
     
-    std::map<int, std::string>::const_iterator it = _config.errorPages.find(statusCode);
-    if (it != _config.errorPages.end()) {
-        std::string errorPagePath = _config.root + it->second;
+    std::map<int, std::string>::const_iterator it = config.errorPages.find(statusCode);
+    if (it != config.errorPages.end()) {
+        std::string errorPagePath = config.root + it->second;
         if (fileExists(errorPagePath)) {
             std::string errorContent = readFile(errorPagePath);
             if (!errorContent.empty()) {
