@@ -45,6 +45,9 @@ class Server
 		void	_setErrorResponse(Response& response, int statusCode, const ServerConfig& config);
 		const LocationConfig* _findLocation(const std::string& uri, const ServerConfig& config) const;
 		std::string _generateDirectoryListing(const std::string& dirPath, const std::string& uri);
+		void _handleCGI(const Request& request, Response& response, 
+                        const std::string& scriptPath, const std::string& cgiExecutor,
+                        const ServerConfig& config);
 
 	public:
 		Server(const std::vector<ServerConfig>& configs);

@@ -22,6 +22,7 @@ std::string	toLowerCase(const std::string& str);
 std::string trim(const std::string& str);
 std::string formatSize(std::size_t bytes);
 std::string formatTime(std::time_t t);
+std::string getFileExtension(const std::string& path);
 
 bool        				fileExists(const std::string& path);
 bool        				isDirectory(const std::string& path);

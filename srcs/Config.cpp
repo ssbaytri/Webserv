@@ -237,49 +237,99 @@ bool Config::parse(const std::string& filename) {
     return true;
 }
 
-// Debug print function
 void Config::print() const {
-    for (size_t i = 0; i < _servers.size(); i++) {
+    std::cout << "========== Parsed Configuration ==========" << std::endl;
+
+    for (size_t i = 0; i < _servers.size(); ++i) {
         const ServerConfig& server = _servers[i];
-        
-        std::cout << "\n=== Server " << (i + 1) << " ===" << std::endl;
+
+        std::cout << "\n--- Server " << i + 1 << " ---" << std::endl;
         std::cout << "Port: " << server.port << std::endl;
         std::cout << "Server Name: " << server.serverName << std::endl;
         std::cout << "Root: " << server.root << std::endl;
-        std::cout << "Max Body Size: " << server.clientMaxBodySize << " bytes" << std::endl;
-        
+        std::cout << "Client Max Body Size: " 
+                  << server.clientMaxBodySize << " bytes" << std::endl;
+
+        // Index files
         std::cout << "Index files: ";
-        for (size_t j = 0; j < server.index.size(); j++) {
-            std::cout << server.index[j] << " ";
+        if (server.index.empty())
+            std::cout << "(none)";
+        else {
+            for (size_t j = 0; j < server.index.size(); ++j)
+                std::cout << server.index[j] << " ";
         }
         std::cout << std::endl;
-        
+
+        // Error pages
         std::cout << "Error pages:" << std::endl;
-        for (std::map<int, std::string>::const_iterator it = server.errorPages.begin();
-             it != server.errorPages.end(); ++it) {
-            std::cout << "  " << it->first << " -> " << it->second << std::endl;
+        if (server.errorPages.empty()) {
+            std::cout << "  (none)" << std::endl;
+        } else {
+            for (std::map<int, std::string>::const_iterator it = server.errorPages.begin();
+                 it != server.errorPages.end(); ++it) {
+                std::cout << "  " << it->first << " => " << it->second << std::endl;
+            }
         }
-        
+
+        // Locations
         std::cout << "Locations (" << server.locations.size() << "):" << std::endl;
-        for (size_t j = 0; j < server.locations.size(); j++) {
+        for (size_t j = 0; j < server.locations.size(); ++j) {
             const LocationConfig& loc = server.locations[j];
-            std::cout << "  " << loc.path << ":" << std::endl;
+
+            std::cout << "  Location " << j + 1 << ": " << loc.path << std::endl;
+
+            // Allowed methods
             std::cout << "    Methods: ";
-            for (size_t k = 0; k < loc.allowedMethods.size(); k++) {
-                std::cout << loc.allowedMethods[k] << " ";
+            if (loc.allowedMethods.empty())
+                std::cout << "(none)";
+            else {
+                for (size_t k = 0; k < loc.allowedMethods.size(); ++k)
+                    std::cout << loc.allowedMethods[k] << " ";
             }
             std::cout << std::endl;
-            if (!loc.root.empty()) {
+
+            // Location root
+            if (!loc.root.empty())
                 std::cout << "    Root: " << loc.root << std::endl;
+
+            // Index files
+            std::cout << "    Index files: ";
+            if (loc.index.empty())
+                std::cout << "(none)";
+            else {
+                for (size_t k = 0; k < loc.index.size(); ++k)
+                    std::cout << loc.index[k] << " ";
             }
-            std::cout << "    Autoindex: " << (loc.autoindex ? "on" : "off") << std::endl;
-            if (!loc.redirect.empty()) {
+            std::cout << std::endl;
+
+            // Autoindex
+            std::cout << "    Autoindex: " 
+                      << (loc.autoindex ? "on" : "off") << std::endl;
+
+            // Redirect
+            if (!loc.redirect.empty())
                 std::cout << "    Redirect: " << loc.redirect << std::endl;
+
+            // CGI
+            std::cout << "    CGI:" << std::endl;
+            if (loc.cgiPass.empty()) {
+                std::cout << "      (none)" << std::endl;
+            } else {
+                for (std::map<std::string, std::string>::const_iterator it = loc.cgiPass.begin();
+                     it != loc.cgiPass.end(); ++it) {
+                    std::cout << "      " << it->first 
+                              << " => " << it->second << std::endl;
+                }
             }
-            for (size_t k = 0; k < server.locations[i].index.size(); k++)
-            std::cout << "    index: " << server.locations[j].index[k] << std::endl;
+
+            // Body size override
+            if (loc.clientMaxBodySize > 0)
+                std::cout << "    Client Max Body Size: "
+                          << loc.clientMaxBodySize << " bytes" << std::endl;
         }
     }
+
+    std::cout << "\n========== End Configuration ==========" << std::endl;
 }
 
 bool Config::validate() const {

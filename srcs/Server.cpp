@@ -230,6 +230,18 @@ void Server::_handleGET(const Request& request, Response& response, const Server
 
     std::string filepath = root + uri;
 
+    if (location && !location->cgiPass.empty())
+    {
+        std::string extension = getFileExtension(filepath);
+        
+        std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
+        if (it != location->cgiPass.end())
+        {
+            _handleCGI(request, response, filepath, it->second, config);
+            return ;
+        }
+    }
+
     if (uri == "/" || uri[uri.length() - 1] == '/')
     {
         std::vector<std::string> indexFiles;
@@ -696,3 +708,16 @@ void Server::_setErrorResponse(Response& response, int statusCode, const ServerC
     }
     response.setBody(defaultBody);
 }
+
+void Server::_handleCGI(const Request& request, Response& response, 
+                const std::string& scriptPath, const std::string& cgiExecutor,
+                const ServerConfig& config)
+{
+    // TODO: Slawi's Part of CGI
+    (void)request;
+    (void)response;
+    (void)config;
+    logMessage("CGI excution of the file " + scriptPath + " with " + cgiExecutor);
+    return ;
+}
+                        

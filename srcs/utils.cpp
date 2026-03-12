@@ -242,3 +242,14 @@ std::string formatTime(time_t time) {
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M", timeinfo);
     return std::string(buffer);
 }
+
+std::string getFileExtension(const std::string& path)
+{
+    size_t dotPos = path.find_last_of('.');
+    
+    if (dotPos == std::string::npos) {
+        return "";
+    }
+    
+    return path.substr(dotPos);
+}
