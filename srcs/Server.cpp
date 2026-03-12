@@ -255,36 +255,36 @@ void Server::_handleGET(const Request& request, Response& response, const Server
 
         if (!indexFound)
         {
+            if (!isDirectory(filepath))
+            {
+                _setErrorResponse(response, 404, config);
+                return ;
+            }
+
             if (location && location->autoindex)
             {
-                if (!isDirectory(filepath)) {
-                    _setErrorResponse(response, 404, config);
-                    return;
-                }
-                
                 DIR* testDir = opendir(filepath.c_str());
-                if (!testDir) {
+                if (!testDir)
+                {
                     logError("Permission denied for directory: " + filepath);
                     _setErrorResponse(response, 403, config);
                     return;
                 }
                 closedir(testDir);
-                
+
                 std::string html = _generateDirectoryListing(filepath, uri);
-                
+
                 response.setStatus(200);
                 response.setHeader("Content-Type", "text/html; charset=UTF-8");
                 response.setHeader("Content-Length", intToString(html.size()));
                 response.setBody(html);
-                
+
                 logMessage("Generated directory listing for: " + filepath);
-                return;
-            }
-            else
-            {
-                _setErrorResponse(response, 403, config);
                 return ;
             }
+
+            _setErrorResponse(response, 403, config);
+            return ;
         }
     }
     
