@@ -627,45 +627,41 @@ void Server::run() {
     }
 }
 
-const LocationConfig* Server::_findLocation(const std::string& uri, const ServerConfig& config) const {
+const LocationConfig* Server::_findLocation(const std::string& uri, const ServerConfig& config) const
+{
     const LocationConfig* bestMatch = NULL;
     size_t longestMatch = 0;
-    
-    for (size_t i = 0; i < config.locations.size(); i++) {
+
+    for (size_t i = 0; i < config.locations.size(); i++)
+    {
         const LocationConfig& loc = config.locations[i];
-        size_t locLen = loc.path.length();
-        
-        // Special case: root location always matches
-        if (loc.path == "/") {
-            if (locLen > longestMatch) {
-                longestMatch = locLen;
-                bestMatch = &loc;
-            }
+        const std::string& path = loc.path;
+        size_t locLen = path.length();
+
+        if (locLen == 0)
             continue;
-        }
-        
-        // Check if URI starts with location path
-        if (uri.compare(0, locLen, loc.path) == 0) {
-            
-            // Require trailing slash or more path (NOT exact match)
-            if (uri.length() > locLen && uri[locLen] == '/') {
-                // Good: /james/something
-                if (locLen > longestMatch) {
-                    longestMatch = locLen;
-                    bestMatch = &loc;
-                }
-            }
-            // Exact match only if location path ends with /
-            else if (uri.length() == locLen && loc.path[locLen - 1] == '/') {
-                // Good: /james/ matches location /james/
-                if (locLen > longestMatch) {
-                    longestMatch = locLen;
-                    bestMatch = &loc;
-                }
-            }
+
+        // Must start with the location path
+        if (uri.compare(0, locLen, path) != 0)
+            continue;
+
+        // Boundary condition:
+        // - exact match:  /uploads  matches location /uploads
+        // - prefix match: /uploads/anything matches location /uploads
+        // - but /uploadsX should NOT match /uploads
+        bool boundaryOk = (uri.length() == locLen) ||
+                          (uri.length() > locLen && uri[locLen] == '/');
+
+        if (!boundaryOk)
+            continue;
+
+        if (locLen > longestMatch)
+        {
+            longestMatch = locLen;
+            bestMatch = &loc;
         }
     }
-    
+
     return bestMatch;
 }
 
