@@ -51,25 +51,26 @@ bool Client::isRequestComplete() const
         
         // Check if it's chunked encoding
         if (encoding == "chunked") {
-            // For chunked encoding, look for the terminating chunk (0\r\n\r\n)
-            // The terminating sequence is: 0\r\n\r\n
+            // For chunked encoding, look for the terminating chunk
+            // The terminating sequence is: \r\n0\r\n\r\n (or just 0\r\n\r\n at the start)
             size_t bodyStart = headersEnd + 4;
-            size_t pos = bodyStart;
             
-            // Look for "0\r\n\r\n" pattern in the body
-            while (pos < _requestBuffer.length()) {
-                if (_requestBuffer[pos] == '0') {
-                    // Check if followed by \r\n\r\n (could have trailing headers, but minimal is \r\n\r\n)
-                    if (pos + 4 < _requestBuffer.length() &&
-                        _requestBuffer[pos + 1] == '\r' &&
-                        _requestBuffer[pos + 2] == '\n' &&
-                        _requestBuffer[pos + 3] == '\r' &&
-                        _requestBuffer[pos + 4] == '\n') {
-                        return true;  // Found terminating chunk
-                    }
-                }
-                pos++;
+            // Look for "\r\n0\r\n\r\n" pattern (chunk terminator after previous chunk)
+            std::string terminator = "\r\n0\r\n\r\n";
+            if (_requestBuffer.find(terminator, bodyStart) != std::string::npos) {
+                return true;
             }
+            
+            // Also check if the body starts with "0\r\n\r\n" (no chunks case)
+            if (bodyStart + 4 < _requestBuffer.length() &&
+                _requestBuffer[bodyStart] == '0' &&
+                _requestBuffer[bodyStart + 1] == '\r' &&
+                _requestBuffer[bodyStart + 2] == '\n' &&
+                _requestBuffer[bodyStart + 3] == '\r' &&
+                _requestBuffer[bodyStart + 4] == '\n') {
+                return true;
+            }
+            
             return false;  // Terminating chunk not found yet
         }
     }

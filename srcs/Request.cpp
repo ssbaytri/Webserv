@@ -373,7 +373,7 @@ bool Request::_parseChunkedBody(const std::string& rawRequest)
         pos += chunkSize;
         
         // Each chunk should end with \r\n
-        if (pos + 1 >= rawRequest.length() || 
+        if (pos + 2 > rawRequest.length() || 
             rawRequest[pos] != '\r' || rawRequest[pos + 1] != '\n')
         {
             logError("Chunk data not followed by CRLF");
