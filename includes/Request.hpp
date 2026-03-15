@@ -9,6 +9,7 @@ class Request {
 private:
     std::string _method;
     std::string _uri;
+    std::string _queryString;
     std::string _version;
     std::map<std::string, std::string> _headers;
 
@@ -49,6 +50,7 @@ public:
     std::string getUploadedFileName() const;
     std::string getUploadedFileContent() const;
     std::string getTransferEncoding() const;
+    std::string getQueryString() const;
 };
 
 #endif

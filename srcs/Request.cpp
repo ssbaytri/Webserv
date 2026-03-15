@@ -45,9 +45,20 @@ bool Request::parseRequestLine(const std::string& rawRequest)
         logError("No space after URI");
         return false;
     }
-    
+        
     _uri = requestLine.substr(firstSpace + 1, secondSpace - firstSpace - 1);
+
+    size_t queryPos = _uri.find("?");
+    if (queryPos != std::string::npos)
+    {
+        _queryString = _uri.substr(queryPos + 1);
+        _uri = _uri.substr(0, queryPos);
+    }
+    else
+        _queryString = "";
+
     std::cout << "URI: [" << _uri << "]" << std::endl;
+    std::cout << "QuertString: [" << _queryString << "]" << std::endl;
     
     _version = requestLine.substr(secondSpace + 1);
     std::cout << "Version: [" << _version << "]" << std::endl;
@@ -290,6 +301,11 @@ std::string Request::getUploadedFileContent() const
 std::string Request::getTransferEncoding() const
 {
     return transferEncoding;
+}
+
+std::string Request::getQueryString() const
+{
+    return _queryString;
 }
 
 bool Request::_parseChunkedBody(const std::string& rawRequest)
