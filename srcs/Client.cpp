@@ -62,7 +62,7 @@ bool Client::isRequestComplete() const
             }
             
             // Also check if the body starts with "0\r\n\r\n" (no chunks case)
-            if (bodyStart + 4 < _requestBuffer.length() &&
+            if (bodyStart + 5 <= _requestBuffer.length() &&
                 _requestBuffer[bodyStart] == '0' &&
                 _requestBuffer[bodyStart + 1] == '\r' &&
                 _requestBuffer[bodyStart + 2] == '\n' &&
