@@ -340,6 +340,22 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
     }
     
     const LocationConfig* location = _findLocation(request.getUri(), config);
+
+    if (location && !location->cgiPass.empty())
+    {
+        std::string root = config.root;
+        if (location && !location->root.empty())
+            root = location->root;
+
+        std::string file_path = root + request.getUri();
+        std::string extension = getFileExtension(file_path);
+        std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
+        if (it != location->cgiPass.end())
+        {
+            _handleCGI(request, response, file_path, it->second, config);
+            return ;
+        }
+    }
     
     // Body size check
     size_t maxBodySize = config.clientMaxBodySize;
@@ -722,4 +738,3 @@ void Server::_handleCGI(const Request& request, Response& response,
     logMessage("CGI excution of the file " + scriptPath + " with " + cgiExecutor);
     return ;
 }
-                        
