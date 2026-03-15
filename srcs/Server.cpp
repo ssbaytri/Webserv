@@ -331,10 +331,12 @@ void Server::_handleGET(const Request& request, Response& response, const Server
 
 void Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config)
 {
-    if (request.getContentLength() == 0)
+    bool isChunked = request.getTransferEncoding() == "chunked";
+
+    if (request.getContentLength() == 0 && !isChunked)
     {
         _setErrorResponse(response, 400, config);
-        return;
+        return ;
     }
     
     const LocationConfig* location = _findLocation(request.getUri(), config);

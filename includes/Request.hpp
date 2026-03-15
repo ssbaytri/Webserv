@@ -48,6 +48,7 @@ public:
     bool isMultipartUpload() const;
     std::string getUploadedFileName() const;
     std::string getUploadedFileContent() const;
+    std::string getTransferEncoding() const;
 };
 
 #endif

@@ -287,6 +287,11 @@ std::string Request::getUploadedFileContent() const
     return _uploadedFileContent;
 }
 
+std::string Request::getTransferEncoding() const
+{
+    return transferEncoding;
+}
+
 bool Request::_parseChunkedBody(const std::string& rawRequest)
 {
     if (_body_start == std::string::npos)
