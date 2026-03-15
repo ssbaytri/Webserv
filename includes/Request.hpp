@@ -16,6 +16,7 @@ private:
     size_t contentLength;      // From Content-Length
     std::string contentType;   // From Content-Type
     std::string connection;    // From Connection
+    std::string transferEncoding; // From Transfer-Encoding
 
     std::string _body;
     size_t _body_start;
@@ -28,6 +29,7 @@ private:
 
     bool _parseMultipart();
     std::string _extractBoundary(const std::string& contentType);
+    bool _parseChunkedBody(const std::string& rawRequest);
 
 public:
     Request();
@@ -46,6 +48,7 @@ public:
     bool isMultipartUpload() const;
     std::string getUploadedFileName() const;
     std::string getUploadedFileContent() const;
+    std::string getTransferEncoding() const;
 };
 
 #endif

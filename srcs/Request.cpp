@@ -11,6 +11,7 @@ Request::Request()
     contentLength(0),
     contentType(""),
     connection(""),
+    transferEncoding(""),
     _body(""),
     _body_start(0)
 {
@@ -127,8 +128,18 @@ bool Request::parse(const std::string& rawRequest)
     host = _headers["host"];
     contentLength = atoi(_headers["content-length"].c_str());
     contentType = _headers["content-type"];
+    transferEncoding = _headers["transfer-encoding"];
 
-    if (contentLength > 0 && _body_start != std::string::npos)
+    // Handle chunked transfer encoding
+    if (transferEncoding == "chunked")
+    {
+        if (!_parseChunkedBody(rawRequest))
+        {
+            logError("Failed to parse chunked body");
+            return false;
+        }
+    }
+    else if (contentLength > 0 && _body_start != std::string::npos)
     {
         size_t availableBody = rawRequest.length() - _body_start;
         if (availableBody < contentLength) {
@@ -274,4 +285,110 @@ std::string Request::getUploadedFileName() const
 std::string Request::getUploadedFileContent() const
 {
     return _uploadedFileContent;
+}
+
+std::string Request::getTransferEncoding() const
+{
+    return transferEncoding;
+}
+
+bool Request::_parseChunkedBody(const std::string& rawRequest)
+{
+    if (_body_start == std::string::npos)
+    {
+        logError("Body start position not found");
+        return false;
+    }
+
+    std::cout << "Parsing chunked body..." << std::endl;
+    
+    size_t pos = _body_start;
+    std::string decodedBody;
+    
+    while (pos < rawRequest.length())
+    {
+        // Find the end of the chunk size line
+        size_t chunkSizeEnd = rawRequest.find("\r\n", pos);
+        if (chunkSizeEnd == std::string::npos)
+        {
+            logError("Malformed chunk: no CRLF after chunk size");
+            return false;
+        }
+        
+        // Extract chunk size (in hexadecimal)
+        std::string chunkSizeStr = rawRequest.substr(pos, chunkSizeEnd - pos);
+        
+        // Handle chunk extensions (e.g., "1a;name=value") - ignore everything after ';'
+        size_t semicolonPos = chunkSizeStr.find(';');
+        if (semicolonPos != std::string::npos)
+        {
+            chunkSizeStr = chunkSizeStr.substr(0, semicolonPos);
+        }
+        
+        // Trim whitespace
+        chunkSizeStr = trim(chunkSizeStr);
+        
+        std::cout << "Chunk size (hex): [" << chunkSizeStr << "]" << std::endl;
+        
+        // Convert hex string to integer
+        size_t chunkSize = 0;
+        for (size_t i = 0; i < chunkSizeStr.length(); i++)
+        {
+            char c = chunkSizeStr[i];
+            chunkSize *= 16;
+            if (c >= '0' && c <= '9')
+                chunkSize += c - '0';
+            else if (c >= 'a' && c <= 'f')
+                chunkSize += c - 'a' + 10;
+            else if (c >= 'A' && c <= 'F')
+                chunkSize += c - 'A' + 10;
+            else
+            {
+                logError("Invalid hex character in chunk size: " + std::string(1, c));
+                return false;
+            }
+        }
+        
+        std::cout << "Chunk size (decimal): " << chunkSize << std::endl;
+        
+        // Check if this is the last chunk (size 0)
+        if (chunkSize == 0)
+        {
+            std::cout << "Last chunk received. Total body size: " << decodedBody.length() << std::endl;
+            _body = decodedBody;
+            contentLength = decodedBody.length();
+            return true;
+        }
+        
+        // Move past the chunk size line (past \r\n)
+        pos = chunkSizeEnd + 2;
+        
+        // Check if we have enough data for the chunk
+        if (pos + chunkSize > rawRequest.length())
+        {
+            logError("Incomplete chunk data");
+            return false;
+        }
+        
+        // Extract chunk data
+        std::string chunkData = rawRequest.substr(pos, chunkSize);
+        decodedBody += chunkData;
+        
+        // Move past the chunk data
+        pos += chunkSize;
+        
+        // Each chunk should end with \r\n
+        if (pos + 2 > rawRequest.length() || 
+            rawRequest[pos] != '\r' || rawRequest[pos + 1] != '\n')
+        {
+            logError("Chunk data not followed by CRLF");
+            return false;
+        }
+        
+        // Move past the trailing \r\n
+        pos += 2;
+    }
+    
+    logError("Chunked body ended without terminating chunk (0-sized chunk)");
+    return false;
 }

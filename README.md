@@ -171,7 +171,7 @@ All AI-generated content was reviewed, tested, and validated before inclusion. N
 | Feature | Status | Notes |
 |---|---|---|
 | **CGI execution** | ❌ Stub only | `_handleCGI()` exists but contains only a `TODO` comment. Needs `fork()` + `execve()`, environment variable setup (`QUERY_STRING`, `CONTENT_TYPE`, `PATH_INFO`, etc.), and pipe-based I/O |
-| **Chunked Transfer-Encoding** | ❌ Missing | The subject requires un-chunking chunked request bodies before passing them to CGI |
+| **Chunked Transfer-Encoding** | ✅ Done | Server now detects and decodes chunked request bodies in `Client::isRequestComplete()` and `Request::_parseChunkedBody()`. Bodies are un-chunked before being passed to request handlers. |
 | **keep-alive / persistent connections** | ❌ Missing | Server closes every connection after a response. HTTP/1.1 keep-alive is not handled |
 | **Client timeout enforcement** | ❌ Defined, never called | `Client::isTimedOut()` exists but is never invoked in the main `run()` loop |
 | **Custom 404/500 error pages** | ⚠️ Partial | config supports them, but `www/errors/` only has `405.html` and `501.html`; `404.html` and `500.html` are missing |
