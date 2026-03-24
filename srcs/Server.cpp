@@ -7,11 +7,24 @@
 #include <fstream>
 #include <dirent.h>
 
+volatile bool g_shutdown = false;
+
+void signalHandler(int signal)
+{
+    (void)signal;
+    g_shutdown = true;
+    logMessage("Received shutdown signal, closing connections...");
+}
 
 // Constructor
 Server::Server(const std::vector<ServerConfig>& configs) : _configs(configs) {
     if (_configs.empty())
         throw std::runtime_error("No server configurations provided");
+
+    signal(SIGINT, signalHandler);   // Ctrl+C
+    signal(SIGTERM, signalHandler);  // kill command
+    logMessage("Signal handlers registered");
+
     _setupSockets();
 }
 
@@ -618,14 +631,19 @@ void Server::_removeFromPoll(int fd) {
 void Server::run() {
     logMessage("Server is running on " + intToString(_configs.size()) + " port(s)");
 
-    while (true)
+    while (!g_shutdown)
     {
         int pollCount = poll(&_pollFds[0], _pollFds.size(), TIMEOUT);
 
         if (pollCount < 0)
         {
+            if (errno == EINTR)
+            {
+                logMessage("Poll interrupted by signal");
+                continue;
+            }
             logError("Poll Error");
-            break ;
+            break;
         }
 
         if (pollCount == 0)
@@ -642,6 +660,7 @@ void Server::run() {
                 logMessage("Client idle timeout on socket " + intToString(timedOutSockets[i]));
                 _closeConnection(timedOutSockets[i]);
             }
+            continue;
         }
 
         for (size_t i = 0; i < _pollFds.size(); i++)
@@ -690,6 +709,20 @@ void Server::run() {
             }
         }
     }
+
+    logMessage("Shutting down gracefully...");
+    
+    std::vector<int> clientSockets;
+    for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        clientSockets.push_back(it->first);
+
+    for (size_t i = 0; i < clientSockets.size(); ++i)
+    {
+        logMessage("Closing client socket " + intToString(clientSockets[i]));
+        _closeConnection(clientSockets[i]);
+    }
+    
+    logMessage("All connections closed");
 }
 
 const LocationConfig* Server::_findLocation(const std::string& uri, const ServerConfig& config) const

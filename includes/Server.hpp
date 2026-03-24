@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
+#include <csignal>
 #include <cerrno>
 #include "Client.hpp"
 #include "Config.hpp"
@@ -18,6 +19,10 @@
 
 #define TIMEOUT 5000
 #define IDLE_TIMEOUT 30
+
+extern volatile bool g_shutdown;
+
+void signalHandler(int signal);
 
 class Server
 {
