@@ -617,7 +617,7 @@ void Server::_removeFromPoll(int fd) {
 // Main server loop
 void Server::run() {
     logMessage("Server is running on " + intToString(_configs.size()) + " port(s)");
-    
+
     while (true)
     {
         int pollCount = poll(&_pollFds[0], _pollFds.size(), TIMEOUT);
@@ -629,7 +629,20 @@ void Server::run() {
         }
 
         if (pollCount == 0)
-            continue;   // TIMEOUT
+        {
+            std::vector<int> timedOutSockets;
+            for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+            {
+                if (it->second->isTimedOut(IDLE_TIMEOUT))
+                    timedOutSockets.push_back(it->first);
+            }
+
+            for (size_t i = 0; i < timedOutSockets.size(); ++i)
+            {
+                logMessage("Client idle timeout on socket " + intToString(timedOutSockets[i]));
+                _closeConnection(timedOutSockets[i]);
+            }
+        }
 
         for (size_t i = 0; i < _pollFds.size(); i++)
         {

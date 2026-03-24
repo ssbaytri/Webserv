@@ -17,6 +17,7 @@
 #include "Response.hpp"
 
 #define TIMEOUT 5000
+#define IDLE_TIMEOUT 30
 
 class Server
 {
