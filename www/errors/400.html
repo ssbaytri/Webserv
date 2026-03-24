@@ -224,38 +224,38 @@ body::after {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>405 — Method Not Allowed</title>
+  <title>400 — Bad Request</title>
 </head>
 <body>
   <span class="corner tl">WEBSERV/1.0</span>
   <span class="corner tr">SYS::ERR</span>
   <span class="corner bl">HTTP/1.1</span>
-  <span class="corner br">405</span>
+  <span class="corner br">400</span>
 
   <div class="container">
     <div class="topbar">
       <div class="topbar-dot"></div>
-      <span>system alert — method rejected</span>
+      <span>system alert — request validation failed</span>
     </div>
 
     <div class="code-block">
-      <div class="status-code error">405</div>
+      <div class="status-code error">400</div>
     </div>
 
     <div class="divider error"></div>
 
-    <div class="title">Method Not Allowed</div>
+    <div class="title">Bad Request</div>
 
     <p class="description">
-      The HTTP method used in this request is <span class="error">not permitted</span>
-      for the target resource. The server knows the method, but it has been
-      disabled or restricted on this route.
+      The server could not parse the incoming request. The syntax is
+      <span class="error">malformed</span>, the framing is invalid, or a required
+      header is missing. Double-check your request format and try again.
     </p>
 
     <div class="terminal error">
-      <div><span class="prompt error">status</span>   <span class="val">405 Method Not Allowed</span></div>
-      <div><span class="prompt error">reason</span>   <span class="val">HTTP method not permitted on route</span></div>
-      <div><span class="prompt error">action</span>   <span class="val">Check the Allow response header</span></div>
+      <div><span class="prompt error">status</span>   <span class="val">400 Bad Request</span></div>
+      <div><span class="prompt error">reason</span>   <span class="val">Malformed request syntax</span></div>
+      <div><span class="prompt error">action</span>   <span class="val">Verify headers and body format</span></div>
     </div>
 
     <a href="/" class="back-link">← return home</a>
