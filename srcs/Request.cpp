@@ -140,6 +140,7 @@ bool Request::parse(const std::string& rawRequest)
     contentLength = atoi(_headers["content-length"].c_str());
     contentType = _headers["content-type"];
     transferEncoding = _headers["transfer-encoding"];
+    connection = _headers["connection"];
 
     // Handle chunked transfer encoding
     if (transferEncoding == "chunked")
@@ -306,6 +307,11 @@ std::string Request::getTransferEncoding() const
 std::string Request::getQueryString() const
 {
     return _queryString;
+}
+
+std::string Request::getConnection() const
+{
+    return connection;
 }
 
 bool Request::_parseChunkedBody(const std::string& rawRequest)

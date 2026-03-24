@@ -455,6 +455,10 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     
     std::string method = request.getMethod();
     std::string uri = request.getUri();
+    std::string conn = request.getConnection();
+
+    if (conn == "close") client->setShouldClose(true);
+    else client->setShouldClose(false);
 
     logMessage("Method: " + method + ", URI: " + uri);
     
@@ -550,9 +554,27 @@ void    Server::_sendResponse(int fd, Client* client)
     }
     
     // Check if we're done sending
-    if (!client->hasMoreToSend()) {
+    if (!client->hasMoreToSend())
+    {
         logMessage("Response sent to socket " + intToString(fd));
-        _closeConnection(fd);
+
+        if (client->shouldClose())
+            _closeConnection(fd);
+        else
+        {
+            client->clearRequest();
+            client->setState(READING_REQUEST);
+
+            for (size_t i = 0; i < _pollFds.size(); i++)
+            {
+                if (_pollFds[i].fd == fd)
+                {
+                    _pollFds[i].events = POLLIN;
+                    break;
+                }
+            }
+            logMessage("Connection kept alive on socket " + intToString(fd));
+        }
     }
 }
 

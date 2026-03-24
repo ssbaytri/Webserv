@@ -19,6 +19,7 @@ class Client {
 		ClientState     _state;
 		time_t          _lastActivity;
 		size_t          _bytesSent;
+		bool			_shouldClose;
 
 	public:
 		// Constructor & Destructor
@@ -47,6 +48,9 @@ class Client {
 
 		// Getters
 		int             getFd() const;
+		bool			shouldClose();
+
+		void 			setShouldClose(bool close);
 };
 
 #endif

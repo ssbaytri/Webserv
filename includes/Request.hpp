@@ -51,6 +51,7 @@ public:
     std::string getUploadedFileContent() const;
     std::string getTransferEncoding() const;
     std::string getQueryString() const;
+    std::string getConnection() const;
 };
 
 #endif

@@ -7,7 +7,8 @@ Client::Client(int fd)
       _responseBuffer(""),
       _state(READING_REQUEST),
       _lastActivity(std::time(NULL)),
-      _bytesSent(0) {
+      _bytesSent(0),
+      _shouldClose(false) {
 }
 
 // Destructor
@@ -161,4 +162,14 @@ bool Client::isTimedOut(time_t timeout) const {
 // Getters
 int Client::getFd() const {
     return _fd;
+}
+
+bool Client::shouldClose()
+{
+    return _shouldClose;
+}
+
+void Client::setShouldClose(bool close)
+{
+    _shouldClose = close;
 }
