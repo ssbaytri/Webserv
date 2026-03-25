@@ -172,10 +172,10 @@ All AI-generated content was reviewed, tested, and validated before inclusion. N
 |---|---|---|
 | **CGI execution** | ❌ Stub only | `_handleCGI()` exists but contains only a `TODO` comment. Needs `fork()` + `execve()`, environment variable setup (`QUERY_STRING`, `CONTENT_TYPE`, `PATH_INFO`, etc.), and pipe-based I/O |
 | **Chunked Transfer-Encoding** | ✅ Done | Server now detects and decodes chunked request bodies in `Client::isRequestComplete()` and `Request::_parseChunkedBody()`. Bodies are un-chunked before being passed to request handlers. |
-| **keep-alive / persistent connections** | ❌ Missing | Server closes every connection after a response. HTTP/1.1 keep-alive is not handled |
-| **Client timeout enforcement** | ❌ Defined, never called | `Client::isTimedOut()` exists but is never invoked in the main `run()` loop |
-| **Custom 404/500 error pages** | ⚠️ Partial | config supports them, but `www/errors/` only has `405.html` and `501.html`; `404.html` and `500.html` are missing |
-| **Signal handling (SIGINT / SIGTERM)** | ❌ Missing | No graceful shutdown on Ctrl-C; resources may not be freed cleanly |
+| **keep-alive / persistent connections** | ✅ Done | Supported via `Connection: keep-alive` header and proper `Content-Length` handling. |
+| **Client timeout enforcement** | ✅ Done | Idle clients are disconnected after `IDLE_TIMEOUT` (30s) in main loop. |
+| **Custom 404/500 error pages** | ✅ Done | all error files are set in the `/errors/` folder |
+| **Signal handling (SIGINT / SIGTERM)** | ✅ Done | Graceful shutdown implemented with `signalHandler` and resource cleanup. |
 | **README.md** | ✅ Done (this file) | Was a single line before; now complete with all subject-required sections |
 | **Bonus: cookies & session management** | ❌ Not started | Requires implementing `Set-Cookie` / `Cookie` header handling |
 | **Bonus: multiple CGI types** | ❌ Blocked by base CGI | Depends on CGI execution being implemented first |
