@@ -68,7 +68,8 @@ bool Request::parseRequestLine(const std::string& rawRequest)
         return false;
     }
     
-    if (_version != "HTTP/1.1" && _version != "HTTP/1.0") {
+    if (_version != "HTTP/1.1") 
+    {
         logError("Unsupported HTTP version: " + std::string(_version));
         return false;
     }

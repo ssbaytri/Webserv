@@ -328,17 +328,14 @@ void Server::_handleGET(const Request& request, Response& response, const Server
             
             logMessage("Serving " + filepath + " (" + intToString(content.size()) + " bytes)");
         } else {
-            response.setStatus(500);
-            response.setHeader("Content-Type", "text/html");
-            response.setBody("<html><body><h1>500 Internal Server Error</h1></body></html>");
+            logError("Failed to read file: " + filepath);
+            _setErrorResponse(response, 500, config);
         }
     }
     else
     {
         logMessage("File not found: " + filepath);
-        response.setStatus(404);
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>");
+        _setErrorResponse(response, 404, config);
     }
 }
 
@@ -459,10 +456,8 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     
     // Parse the request
     if (!request.parse(client->getRequest())) {
-        response.setStatus(400);
+        _setErrorResponse(response, 400, config);
         response.setHeader("Connection", "close");
-        response.setHeader("Content-Type", "text/html");
-        response.setBody("<html><body><h1>400 Bad Request</h1></body></html>");
         client->setShouldClose(true);
         client->setResponse(response.toString());
         return;
@@ -664,7 +659,7 @@ void Server::run() {
             logMessage("Client idle timeout on socket " + intToString(timedOutSockets[i]));
             _closeConnection(timedOutSockets[i]);
         }
-        
+
         if (pollCount == 0)
             continue;
 
