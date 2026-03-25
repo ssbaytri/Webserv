@@ -18,7 +18,7 @@
 #include "Response.hpp"
 
 #define TIMEOUT 5000
-#define IDLE_TIMEOUT 30
+#define IDLE_TIMEOUT 40
 
 extern volatile bool g_shutdown;
 

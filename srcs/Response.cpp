@@ -18,6 +18,10 @@ void Response::setHeader(const std::string& key, const std::string& value) {
 
 void Response::setBody(const std::string& body) {
     _body = body;
+
+    std::stringstream ss;
+    ss << body.size();
+    setHeader("Content-Length", ss.str());
 }
 
 std::string Response::toString() const

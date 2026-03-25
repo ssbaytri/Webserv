@@ -652,22 +652,21 @@ void Server::run() {
             break;
         }
 
-        if (pollCount == 0)
+        std::vector<int> timedOutSockets;
+        for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         {
-            std::vector<int> timedOutSockets;
-            for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-            {
-                if (it->second->isTimedOut(IDLE_TIMEOUT))
-                    timedOutSockets.push_back(it->first);
-            }
-
-            for (size_t i = 0; i < timedOutSockets.size(); ++i)
-            {
-                logMessage("Client idle timeout on socket " + intToString(timedOutSockets[i]));
-                _closeConnection(timedOutSockets[i]);
-            }
-            continue;
+            if (it->second->isTimedOut(IDLE_TIMEOUT))
+                timedOutSockets.push_back(it->first);
         }
+
+        for (size_t i = 0; i < timedOutSockets.size(); ++i)
+        {
+            logMessage("Client idle timeout on socket " + intToString(timedOutSockets[i]));
+            _closeConnection(timedOutSockets[i]);
+        }
+        
+        if (pollCount == 0)
+            continue;
 
         for (size_t i = 0; i < _pollFds.size(); i++)
         {
