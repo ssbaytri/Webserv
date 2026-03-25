@@ -460,8 +460,10 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     // Parse the request
     if (!request.parse(client->getRequest())) {
         response.setStatus(400);
+        response.setHeader("Connection", "close");
         response.setHeader("Content-Type", "text/html");
         response.setBody("<html><body><h1>400 Bad Request</h1></body></html>");
+        client->setShouldClose(true);
         client->setResponse(response.toString());
         return;
     }
@@ -470,8 +472,12 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     std::string uri = request.getUri();
     std::string conn = request.getConnection();
 
-    if (conn == "close") client->setShouldClose(true);
-    else client->setShouldClose(false);
+    if (conn == "close")
+        client->setShouldClose(true);
+    else
+        client->setShouldClose(false);
+
+    response.setHeader("Connection", client->shouldClose() ? "close" : "keep-alive");
 
     logMessage("Method: " + method + ", URI: " + uri);
     
