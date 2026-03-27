@@ -16,6 +16,7 @@
 #include "Config.hpp"
 #include "Request.hpp"
 #include "Response.hpp"
+#include "CgiHandler.hpp"
 
 #define TIMEOUT 5000
 #define IDLE_TIMEOUT 40
@@ -23,6 +24,13 @@
 extern volatile bool g_shutdown;
 
 void signalHandler(int signal);
+
+struct CgiContext {
+    CgiHandler* handler;
+    int         clientFd;
+    std::string outputBuffer;
+    time_t      startTime;
+};
 
 class Server
 {
@@ -51,7 +59,7 @@ class Server
 		void	_setErrorResponse(Response& response, int statusCode, const ServerConfig& config);
 		const LocationConfig* _findLocation(const std::string& uri, const ServerConfig& config) const;
 		std::string _generateDirectoryListing(const std::string& dirPath, const std::string& uri);
-		void _handleCGI(const Request& request, Response& response, 
+		void _handleCGI(Client* client, const Requestvoid _handleCGI(const Request& request, Response& response, request, Responsevoid _handleCGI(const Request& request, Response& response, response, 
                         const std::string& scriptPath, const std::string& cgiExecutor,
                         const ServerConfig& config);
 
