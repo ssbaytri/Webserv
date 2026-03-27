@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <stdexcept>
 #include <fstream>
+#include <sys/wait.h>
 #include <dirent.h>
 
 volatile bool g_shutdown = false;
@@ -231,7 +232,7 @@ std::string Server::_generateDirectoryListing(const std::string& dirPath, const 
     return html;
 }
 
-void Server::_handleGET(Client* client, const Requestvoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) config)
+void Server::_handleGET(const Request& request, Response& response, const ServerConfig& config)
 {
     std::string uri = request.getUri();
     
@@ -250,7 +251,7 @@ void Server::_handleGET(Client* client, const Requestvoid Server::_handleGET(con
         std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
         if (it != location->cgiPass.end())
         {
-            _handleCGI(client, request, response, filepath, it->second, config);
+            _handleCGI(request, response, filepath, it->second, config);
             return ;
         }
     }
@@ -339,8 +340,7 @@ void Server::_handleGET(Client* client, const Requestvoid Server::_handleGET(con
     }
 }
 
-void Server::_handlePOST(Client* client, const Requestvoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) config)
-{
+void Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config){
     bool isChunked = request.getTransferEncoding() == "chunked";
 
     if (request.getContentLength() == 0 && !isChunked)
@@ -362,7 +362,7 @@ void Server::_handlePOST(Client* client, const Requestvoid Server::_handlePOST(c
         std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
         if (it != location->cgiPass.end())
         {
-            _handleCGI(client, request, response, file_path, it->second, config);
+            _handleCGI(request, response, file_path, it->second, config);
             return ;
         }
     }
@@ -416,8 +416,7 @@ void Server::_handlePOST(Client* client, const Requestvoid Server::_handlePOST(c
     }
 }
 
-void Server::_handleDELETE(Client* client, const Requestvoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) config)
-{
+void Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config){
     std::string uri = request.getUri();
     
     if (!isPathSafe(uri)) {
@@ -515,11 +514,11 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     }
 
     if (method == "GET")
-        _handleGET(client, request, response, config);
+        _handleGET(request, response, config);
     else if (method == "POST")
-        _handlePOST(client, request, response, config);
+        _handlePOST(request, response, config);
     else if (method == "DELETE")
-        _handleDELETE(client, request, response, config);
+        _handleDELETE(request, response, config);
     client->setResponse(response.toString());
 }
 
@@ -795,14 +794,73 @@ void Server::_setErrorResponse(Response& response, int statusCode, const ServerC
     response.setBody(defaultBody);
 }
 
-void Server::_handleCGI(Client* client, const Requestvoid Server::_handleCGI(const Request& request, Response& response, request, Responsevoid Server::_handleCGI(const Request& request, Response& response, response, 
+void Server::_handleCGI(const Request& request, Response& response, 
                 const std::string& scriptPath, const std::string& cgiExecutor,
                 const ServerConfig& config)
 {
-    // TODO: Slawi's Part of CGI
-    (void)request;
-    (void)response;
-    (void)config;
-    logMessage("CGI excution of the file " + scriptPath + " with " + cgiExecutor);
-    return ;
+    CgiHandler cgi(request, scriptPath);
+
+    if (cgi.setupIO(request.getBody()) < 0)
+    {
+        _setErrorResponse(response, 500, config);
+        return ;
+    }
+
+    if (cgi.executeCgi(scriptPath, cgiExecutor) < 0)
+    {
+        _setErrorResponse(response, 500, config);
+        return ;
+    }
+
+    std::string cgiOutput;
+    char buffer[4096];
+    ssize_t bytesRead;
+    while ((bytesRead = read(cgi.getOutputFd(), buffer, sizeof(buffer))) > 0)
+        cgiOutput += std::string(buffer, bytesRead);
+
+    int status;
+    int waited = 0;
+    while (waited < 5)
+    {
+        pid_t result = waitpid(cgi.getPid(), &status, WNOHANG);
+        if (result > 0) break;
+        sleep(1);
+        waited++;
+    }
+    if (waited >= 5)
+    {
+        kill(cgi.getPid(), SIGKILL);
+        waitpid(cgi.getPid(), &status, 0);
+        _setErrorResponse(response, 500, config);
+        return ;
+    }
+
+    size_t headerEnd = cgiOutput.find("\r\n\r\n");
+    if (headerEnd == std::string::npos)
+        headerEnd = cgiOutput.find("\n\n");
+    if (headerEnd == std::string::npos) {
+        _setErrorResponse(response, 500, config);
+        return;
+    }
+
+    std::string cgiHeaders = cgiOutput.substr(0, headerEnd);
+    std::string cgiBody = cgiOutput.substr(headerEnd + 4);
+
+    response.setStatus(200);
+    response.setBody(cgiBody);
+
+    std::istringstream stream(cgiHeaders);
+    std::string line;
+    while (std::getline(stream, line))
+    {
+        if (line.empty() || line == "\r") continue;
+        size_t colon = line.find(':');
+        if (colon == std::string::npos) continue;
+        std::string key = trim(line.substr(0, colon));
+        std::string val = trim(line.substr(colon + 1));
+        if (key == "Status")
+            response.setStatus(atoi(val.c_str()));
+        else
+            response.setHeader(key, val);
+    }
 }

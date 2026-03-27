@@ -26,7 +26,7 @@ CgiHandler::~CgiHandler()
     if (_outPipeFd[1] != -1) close(_outPipeFd[1]);
 }
 
-int CgiHandler::setupIO()
+int CgiHandler::setupIO(const std::string& body)
 {
     if (pipe(_inPipeFd) == -1) {
         std::cerr << "CGI Error: Failed to create input pipe" << std::endl;
@@ -37,6 +37,8 @@ int CgiHandler::setupIO()
         std::cerr << "CGI Error: Failed to create output pipe" << std::endl;
         return -1;
     }
+
+    _body = body;
 
     return 0;
 }
