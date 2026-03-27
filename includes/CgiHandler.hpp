@@ -14,6 +14,7 @@ private:
     int _inPipeFd[2];
     int _outPipeFd[2];
     pid_t _cgiPid;
+    std::string _body;
 
     void _initEnv(const Request& request, const std::string& scriptPath);
 
@@ -25,7 +26,7 @@ public:
     void   clearEnvp();
 
     // CGI Execution
-    int    setupIO(const std::string& body);
+    int    setupIO();
     int    executeCgi(const std::string& scriptPath, const std::string& cgiExecutor);
     int    getOutputFd() const;
     pid_t  getPid() const;
