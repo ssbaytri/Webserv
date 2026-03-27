@@ -16,6 +16,7 @@ SRCS		= main.cpp \
 			  Request.cpp \
 			  Response.cpp \
 			  Config.cpp   \
+                          CgiHandler.cpp \
 			  utils.cpp
 
 # Object files
@@ -27,6 +28,7 @@ HEADERS		= $(INC_DIR)/Server.hpp \
 			  $(INC_DIR)/Request.hpp \
 			  $(INC_DIR)/Response.hpp \
 			  $(INC_DIR)/Config.hpp \
+                          $(INC_DIR)/CgiHandler.hpp \
 			  $(INC_DIR)/utils.hpp
 
 # Colors

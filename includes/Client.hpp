@@ -8,6 +8,7 @@
 enum ClientState {
     READING_REQUEST,
     SENDING_RESPONSE,
+    WAITING_FOR_CGI,
     DONE
 };
 

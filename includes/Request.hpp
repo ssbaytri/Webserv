@@ -44,6 +44,7 @@ public:
     std::string getUri() const;
     std::string getVersion() const;
     size_t getContentLength() const;
+    std::string getContentType() const;
     std::string getBody() const;
 
     bool isMultipartUpload() const;

@@ -194,6 +194,11 @@ size_t Request::getContentLength() const
     return contentLength;
 }
 
+std::string Request::getContentType() const
+{
+    return contentType;
+}
+
 std::string Request::getBody() const
 {
     return _body;

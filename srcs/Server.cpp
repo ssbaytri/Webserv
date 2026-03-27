@@ -231,7 +231,7 @@ std::string Server::_generateDirectoryListing(const std::string& dirPath, const 
     return html;
 }
 
-void Server::_handleGET(const Request& request, Response& response, const ServerConfig& config)
+void Server::_handleGET(Client* client, const Requestvoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handleGET(const Request& request, Response& response, const ServerConfig& config) config)
 {
     std::string uri = request.getUri();
     
@@ -250,7 +250,7 @@ void Server::_handleGET(const Request& request, Response& response, const Server
         std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
         if (it != location->cgiPass.end())
         {
-            _handleCGI(request, response, filepath, it->second, config);
+            _handleCGI(client, request, response, filepath, it->second, config);
             return ;
         }
     }
@@ -339,7 +339,7 @@ void Server::_handleGET(const Request& request, Response& response, const Server
     }
 }
 
-void Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config)
+void Server::_handlePOST(Client* client, const Requestvoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config) config)
 {
     bool isChunked = request.getTransferEncoding() == "chunked";
 
@@ -362,7 +362,7 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
         std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
         if (it != location->cgiPass.end())
         {
-            _handleCGI(request, response, file_path, it->second, config);
+            _handleCGI(client, request, response, file_path, it->second, config);
             return ;
         }
     }
@@ -416,7 +416,7 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
     }
 }
 
-void Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config)
+void Server::_handleDELETE(Client* client, const Requestvoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) request, Responsevoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) response, const ServerConfigvoid Server::_handleDELETE(const Request& request, Response& response, const ServerConfig& config) config)
 {
     std::string uri = request.getUri();
     
@@ -515,11 +515,11 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     }
 
     if (method == "GET")
-        _handleGET(request, response, config);
+        _handleGET(client, request, response, config);
     else if (method == "POST")
-        _handlePOST(request, response, config);
+        _handlePOST(client, request, response, config);
     else if (method == "DELETE")
-        _handleDELETE(request, response, config);
+        _handleDELETE(client, request, response, config);
     client->setResponse(response.toString());
 }
 
@@ -795,7 +795,7 @@ void Server::_setErrorResponse(Response& response, int statusCode, const ServerC
     response.setBody(defaultBody);
 }
 
-void Server::_handleCGI(const Request& request, Response& response, 
+void Server::_handleCGI(Client* client, const Requestvoid Server::_handleCGI(const Request& request, Response& response, request, Responsevoid Server::_handleCGI(const Request& request, Response& response, response, 
                 const std::string& scriptPath, const std::string& cgiExecutor,
                 const ServerConfig& config)
 {
