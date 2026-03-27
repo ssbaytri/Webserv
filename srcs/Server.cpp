@@ -815,8 +815,17 @@ void Server::_handleCGI(const Request& request, Response& response,
     std::string cgiOutput;
     char buffer[4096];
     ssize_t bytesRead;
+    
+    logMessage("DEBUG: Reading CGI output...");  // NEW
+    
     while ((bytesRead = read(cgi.getOutputFd(), buffer, sizeof(buffer))) > 0)
+    {
+        logMessage("DEBUG: Read " + intToString(bytesRead) + " bytes from CGI");  // NEW
         cgiOutput += std::string(buffer, bytesRead);
+    }
+    
+    logMessage("DEBUG: Total CGI output size: " + intToString(cgiOutput.size()));  // NEW
+    logMessage("DEBUG: CGI output:\n" + cgiOutput);  // NEW
 
     int status;
     int waited = 0;
@@ -835,16 +844,29 @@ void Server::_handleCGI(const Request& request, Response& response,
         return ;
     }
 
+    if (cgiOutput.empty())  // NEW: Check if output is empty
+    {
+        logMessage("DEBUG: CGI produced no output!");
+        _setErrorResponse(response, 500, config);
+        return;
+    }
+
     size_t headerEnd = cgiOutput.find("\r\n\r\n");
-    if (headerEnd == std::string::npos)
-        headerEnd = cgiOutput.find("\n\n");
+    size_t separatorLen = 4;
+
     if (headerEnd == std::string::npos) {
+        headerEnd = cgiOutput.find("\n\n");
+        separatorLen = 2;
+    }
+    
+    if (headerEnd == std::string::npos) {
+        logMessage("DEBUG: No header separator found in CGI output");  // NEW
         _setErrorResponse(response, 500, config);
         return;
     }
 
     std::string cgiHeaders = cgiOutput.substr(0, headerEnd);
-    std::string cgiBody = cgiOutput.substr(headerEnd + 4);
+    std::string cgiBody = cgiOutput.substr(headerEnd + separatorLen);
 
     response.setStatus(200);
     response.setBody(cgiBody);
