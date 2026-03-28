@@ -58,16 +58,8 @@ int CgiHandler::executeCgi(const std::string& scriptPath, const std::string& cgi
         std::string scriptDir = scriptPath.substr(0, scriptPath.rfind('/'));
         std::string scriptName = scriptPath.substr(scriptPath.rfind('/') + 1);
         
-        std::cerr << "DEBUG: Changing to: " << scriptDir << std::endl;
-        std::cerr << "DEBUG: scriptName: " << scriptName << std::endl;
-        std::cerr << "DEBUG: cgiExecutor: " << cgiExecutor << std::endl;
-        
         if (!scriptDir.empty())
             chdir(scriptDir.c_str());
-        
-        char cwd[1024];
-        getcwd(cwd, sizeof(cwd));
-        std::cerr << "DEBUG: Current dir after chdir: " << cwd << std::endl;
 
         // Redirect pipes
         dup2(_inPipeFd[0], STDIN_FILENO);
@@ -77,8 +69,6 @@ int CgiHandler::executeCgi(const std::string& scriptPath, const std::string& cgi
         dup2(_outPipeFd[1], STDOUT_FILENO);
         close(_outPipeFd[0]);
         close(_outPipeFd[1]);
-        
-        std::cerr << "DEBUG: About to execve" << std::endl;
 
         char *argv[] = 
         {
@@ -118,12 +108,9 @@ pid_t CgiHandler::getPid() const { return _cgiPid; }
 
 void CgiHandler::_initEnv(const Request& request, const std::string& scriptPath)
 {
-    // Convert scriptPath to absolute path
     char absolutePath[1024];
-    if (realpath(scriptPath.c_str(), absolutePath) == NULL) {
-        // If realpath fails, use the path as-is
+    if (realpath(scriptPath.c_str(), absolutePath) == NULL)
         strcpy(absolutePath, scriptPath.c_str());
-    }
     
     _envMap["GATEWAY_INTERFACE"] = "CGI/1.1";
     _envMap["SERVER_PROTOCOL"] = "HTTP/1.1";

@@ -1,6 +1,12 @@
 <?php
-echo "Content-Type: text/html\n\n";
+// Set content type
+header("Content-Type: text/plain");
+
+// Output received POST data
+echo "Received POST data:\n";
+echo file_get_contents("php://input") . "\n";
+
+// Output some CGI environment variables
+echo "REQUEST_METHOD = " . $_SERVER['REQUEST_METHOD'] . "\n";
+echo "QUERY_STRING = " . ($_SERVER['QUERY_STRING'] ?? '') . "\n";
 ?>
-<h1>POST Test</h1>
-<p>Content-Length: <?php echo $_SERVER['CONTENT_LENGTH'] ?? 0; ?></p>
-<p>Data: <?php echo file_get_contents('php://stdin'); ?></p>

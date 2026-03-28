@@ -1,7 +1,6 @@
 <?php
-echo "Content-Type: text/html\n";
-echo "Status: 200\n";
-echo "\n";
+header("Content-Type: text/html");
+http_response_code(200);
 ?>
 <h1>PHP CGI Test</h1>
 <p>Method: <?php echo $_SERVER['REQUEST_METHOD']; ?></p>
