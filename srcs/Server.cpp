@@ -814,27 +814,46 @@ void Server::_handleCGI(const Request& request, Response& response,
 
     std::string cgiOutput;
     char buffer[4096];
-    ssize_t bytesRead;
+    time_t startTime = std::time(NULL);
+    int cgiTimeout = 5;
     
-    while ((bytesRead = read(cgi.getOutputFd(), buffer, sizeof(buffer))) > 0)
+    while (true)
+    {
+        if (std::time(NULL) - startTime >= cgiTimeout)
+        {
+            logError("CGI timeout — killing process");
+            kill(cgi.getPid(), SIGKILL);
+            waitpid(cgi.getPid(), NULL, 0);
+            _setErrorResponse(response, 504, config);
+            return;
+        }
+
+        struct pollfd pfd;
+        pfd.fd = cgi.getOutputFd();
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+
+        int ready = poll(&pfd, 1, 1000);
+
+        if (ready < 0) {
+            _setErrorResponse(response, 500, config);
+            return;
+        }
+
+        if (ready == 0)
+            continue;
+
+        if (pfd.revents & POLLHUP && !(pfd.revents & POLLIN))
+            break;
+
+        ssize_t bytesRead = read(cgi.getOutputFd(), buffer, sizeof(buffer));
+        if (bytesRead <= 0)
+            break;
         cgiOutput += std::string(buffer, bytesRead);
+    }
 
     int status;
-    int waited = 0;
-    while (waited < 5)
-    {
-        pid_t result = waitpid(cgi.getPid(), &status, WNOHANG);
-        if (result > 0) break;
-        sleep(1);
-        waited++;
-    }
-    if (waited >= 5)
-    {
-        kill(cgi.getPid(), SIGKILL);
-        waitpid(cgi.getPid(), &status, 0);
-        _setErrorResponse(response, 500, config);
-        return ;
-    }
+    waitpid(cgi.getPid(), &status, 0);
 
     if (cgiOutput.empty())
     {
