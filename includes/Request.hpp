@@ -12,6 +12,8 @@ private:
     std::string _queryString;
     std::string _version;
     std::map<std::string, std::string> _headers;
+    std::map<std::string, std::string> _cookies;
+    std::map<std::string, std::string> _formData;
 
     std::string host;          // From Host header
     size_t contentLength;      // From Content-Length
@@ -31,6 +33,9 @@ private:
     bool _parseMultipart();
     std::string _extractBoundary(const std::string& contentType);
     bool _parseChunkedBody(const std::string& rawRequest);
+    bool _parseCookies();
+    bool _parseUrlEncoded();
+    std::string _percentDecode(const std::string& str) const;
 
 public:
     Request();
@@ -53,6 +58,12 @@ public:
     std::string getTransferEncoding() const;
     std::string getQueryString() const;
     std::string getConnection() const;
+
+    std::string getCookie(const std::string& name) const;
+    std::map<std::string, std::string> getCookies() const;
+
+    std::string getFormField(const std::string& name) const;
+    bool isUrlEncodedForm() const;
 };
 
 #endif

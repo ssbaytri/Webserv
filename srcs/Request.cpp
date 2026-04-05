@@ -143,6 +143,8 @@ bool Request::parse(const std::string& rawRequest)
     transferEncoding = _headers["transfer-encoding"];
     connection = _headers["connection"];
 
+    _parseCookies();
+
     // Handle chunked transfer encoding
     if (transferEncoding == "chunked")
     {
@@ -170,6 +172,14 @@ bool Request::parse(const std::string& rawRequest)
     if (isMultipartUpload()) {
         if (!_parseMultipart()) {
             logError("Failed to parse multipart upload");
+            return false;
+        }
+    }
+    else if (isUrlEncodedForm())
+    {
+        if (!_parseUrlEncoded())
+        {
+            logError("Failed to parse url encoded form");
             return false;
         }
     }
@@ -419,4 +429,155 @@ bool Request::_parseChunkedBody(const std::string& rawRequest)
     
     logError("Chunked body ended without terminating chunk (0-sized chunk)");
     return false;
+}
+
+bool Request::_parseCookies()
+{
+    std::map<std::string, std::string>::const_iterator it = _headers.find("cookie");
+    if (it == _headers.end())
+        return true; // no cookies, not an error
+
+    std::string cookieHeader = it->second;
+
+    // Cookie header looks like: "sessionId=abc123; theme=dark; lang=en"
+    size_t pos = 0;
+    while (pos < cookieHeader.length())
+    {
+        // find next semicolon
+        size_t semicolon = cookieHeader.find(';', pos);
+        std::string pair;
+
+        if (semicolon == std::string::npos)
+        {
+            pair = cookieHeader.substr(pos);
+            pos = cookieHeader.length();
+        }
+        else
+        {
+            pair = cookieHeader.substr(pos, semicolon - pos);
+            pos = semicolon + 1;
+        }
+
+        // split on '='
+        size_t eq = pair.find('=');
+        if (eq == std::string::npos)
+            continue;
+
+        std::string key = trim(pair.substr(0, eq));
+        std::string val = trim(pair.substr(eq + 1));
+
+        if (!key.empty())
+            _cookies[key] = val;
+    }
+
+    return true;
+}
+
+std::string Request::getCookie(const std::string& name) const
+{
+    std::map<std::string, std::string>::const_iterator it = _cookies.find(name);
+    if (it == _cookies.end())
+        return "";
+    return it->second;
+}
+
+std::map<std::string, std::string> Request::getCookies() const
+{
+    return _cookies;
+}
+
+bool Request::isUrlEncodedForm() const
+{
+    return contentType.find("application/x-www-form-urlencoded") != std::string::npos;
+}
+
+std::string Request::_percentDecode(const std::string& str) const
+{
+    std::string result;
+    size_t i = 0;
+
+    while (i < str.length())
+    {
+        if (str[i] == '+')
+        {
+            // + means space in url encoded forms
+            result += ' ';
+            i++;
+        }
+        else if (str[i] == '%' && i + 2 < str.length())
+        {
+            // decode percent encoded character e.g %40 -> @
+            std::string hex = str.substr(i + 1, 2);
+            char decoded = 0;
+
+            for (int j = 0; j < 2; j++)
+            {
+                decoded *= 16;
+                char c = hex[j];
+                if (c >= '0' && c <= '9')
+                    decoded += c - '0';
+                else if (c >= 'a' && c <= 'f')
+                    decoded += c - 'a' + 10;
+                else if (c >= 'A' && c <= 'F')
+                    decoded += c - 'A' + 10;
+            }
+            result += decoded;
+            i += 3;
+        }
+        else
+        {
+            result += str[i];
+            i++;
+        }
+    }
+
+    return result;
+}
+
+
+bool Request::_parseUrlEncoded()
+{
+    if (_body.empty())
+        return false;
+
+    // body looks like: username=admin&password=1234
+    size_t pos = 0;
+    while (pos < _body.length())
+    {
+        // find next &
+        size_t ampersand = _body.find('&', pos);
+        std::string pair;
+
+        if (ampersand == std::string::npos)
+        {
+            pair = _body.substr(pos);
+            pos = _body.length();
+        }
+        else
+        {
+            pair = _body.substr(pos, ampersand - pos);
+            pos = ampersand + 1;
+        }
+
+        // split on =
+        size_t eq = pair.find('=');
+        if (eq == std::string::npos)
+            continue;
+
+        std::string key = _percentDecode(trim(pair.substr(0, eq)));
+        std::string val = _percentDecode(trim(pair.substr(eq + 1)));
+
+        if (!key.empty())
+            _formData[key] = val;
+    }
+
+    return true;
+}
+
+std::string Request::getFormField(const std::string& name) const
+{
+    std::map<std::string, std::string>::const_iterator it = _formData.find(name);
+    if (it == _formData.end())
+        return "";
+    return it->second;
 }
