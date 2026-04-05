@@ -17,6 +17,7 @@
 #include "Request.hpp"
 #include "Response.hpp"
 #include "CgiHandler.hpp"
+#include "SessionManager.hpp"
 
 #define TIMEOUT 5000
 #define IDLE_TIMEOUT 40
@@ -40,6 +41,7 @@ class Server
 		std::vector<int>				_serverSockets;
 		std::vector<struct pollfd>		_pollFds;
 		std::map<int, Client*>			_clients;
+		SessionManager					_sessionManager;
 
 		void    _setupSockets();
 		int		_createListeningSocket(int port);
@@ -62,6 +64,11 @@ class Server
 		void _handleCGI(const Request& request, Response& response, 
                 const std::string& scriptPath, const std::string& cgiExecutor,
                 const ServerConfig& config);
+
+		void _handleLogin(const Request& request, Response& response, const ServerConfig& config);
+		void _handleLogout(const Request& request, Response& response, const ServerConfig& config);
+		void _handleDashboard(const Request& request, Response& response, const ServerConfig& config);
+		std::string _getSessionIdFromRequest(const Request& request);
 
 	public:
 		Server(const std::vector<ServerConfig>& configs);

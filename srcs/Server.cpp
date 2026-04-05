@@ -256,6 +256,21 @@ void Server::_handleGET(const Request& request, Response& response, const Server
         }
     }
 
+    if (location && location->requireAuth)
+    {
+        std::string sessionId = _getSessionIdFromRequest(request);
+        SessionData* session = _sessionManager.getSession(sessionId);
+
+        if (!session)
+        {
+            response.setStatus(302);
+            response.setHeader("Location", "/login");
+            response.setHeader("Content-Length", "0");
+            response.setBody("");
+            return;
+        }
+    }
+
     if (uri == "/" || uri[uri.length() - 1] == '/')
     {
         std::vector<std::string> indexFiles;
@@ -894,4 +909,9 @@ void Server::_handleCGI(const Request& request, Response& response,
         else
             response.setHeader(key, val);
     }
+}
+
+std::string Server::_getSessionIdFromRequest(const Request& request)
+{
+    return request.getCookie("sessionId");
 }

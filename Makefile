@@ -16,8 +16,9 @@ SRCS		= main.cpp \
 			  Request.cpp \
 			  Response.cpp \
 			  Config.cpp   \
-                          CgiHandler.cpp \
-			  utils.cpp
+              CgiHandler.cpp \
+			  utils.cpp \
+			  SessionManager.cpp \
 
 # Object files
 OBJS		= $(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
@@ -28,8 +29,9 @@ HEADERS		= $(INC_DIR)/Server.hpp \
 			  $(INC_DIR)/Request.hpp \
 			  $(INC_DIR)/Response.hpp \
 			  $(INC_DIR)/Config.hpp \
-                          $(INC_DIR)/CgiHandler.hpp \
-			  $(INC_DIR)/utils.hpp
+              $(INC_DIR)/CgiHandler.hpp \
+			  $(INC_DIR)/utils.hpp \
+			  $(INC_DIR)/SessionManager.hpp \
 
 # Colors
 GREEN		= \033[0;32m
