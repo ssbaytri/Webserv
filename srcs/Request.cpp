@@ -510,7 +510,7 @@ std::string Request::_percentDecode(const std::string& str) const
             std::string hex = str.substr(i + 1, 2);
             char decoded = 0;
 
-            for (int j = 0; j < 2; j++)
+            for (size_t j = 0; j < 2; j++)
             {
                 decoded *= 16;
                 char c = hex[j];
@@ -538,7 +538,10 @@ std::string Request::_percentDecode(const std::string& str) const
 bool Request::_parseUrlEncoded()
 {
     if (_body.empty())
-        return false;
+    {
+        logMessage("Empty form body - no fields to parse");
+        return true;
+    }
 
     // body looks like: username=admin&password=1234
     size_t pos = 0;
