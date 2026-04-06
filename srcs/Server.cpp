@@ -271,6 +271,20 @@ void Server::_handleGET(const Request& request, Response& response, const Server
         }
     }
 
+    if (uri == "/login")
+    {
+        std::string content = readFile(config.root + "/login.html");
+        if (content.empty())
+        {
+            _setErrorResponse(response, 404, config);
+            return;
+        }
+        response.setStatus(200);
+        response.setHeader("Content-Type", "text/html");
+        response.setBody(content);
+        return;
+    }
+
     if (uri == "/" || uri[uri.length() - 1] == '/')
     {
         std::vector<std::string> indexFiles;
@@ -914,4 +928,111 @@ void Server::_handleCGI(const Request& request, Response& response,
 std::string Server::_getSessionIdFromRequest(const Request& request)
 {
     return request.getCookie("sessionId");
+}
+
+void Server::_handleLogin(const Request& request, Response& response, const ServerConfig& config)
+{
+    (void)config;
+
+    std::string username = request.getFormField("username");
+    std::string password = request.getFormField("password");
+
+    if (username == "admin" && password == "1234")
+    {
+        // create session
+        std::string sessionId = _sessionManager.createSession(username);
+
+        logMessage("Session created for user: " + username + " id: " + sessionId);
+
+        // set cookie and redirect to dashboard
+        response.setStatus(302);
+        response.setHeader("Set-Cookie", "sessionId=" + sessionId + "; Path=/; HttpOnly");
+        response.setHeader("Location", "/dashboard");
+        response.setHeader("Content-Length", "0");
+        response.setBody("");
+    }
+    else
+    {
+        logMessage("Failed login attempt for user: " + username);
+
+        // redirect back to login with error flag
+        response.setStatus(302);
+        response.setHeader("Location", "/login?error=1");
+        response.setHeader("Content-Length", "0");
+        response.setBody("");
+    }
+}
+
+void Server::_handleDashboard(const Request& request, Response& response, const ServerConfig& config)
+{
+    (void)config;
+
+    std::string sessionId = _getSessionIdFromRequest(request);
+    SessionData* session = _sessionManager.getSession(sessionId);
+
+    // session already validated in _handleGET but double check
+    if (!session)
+    {
+        response.setStatus(302);
+        response.setHeader("Location", "/login");
+        response.setHeader("Content-Length", "0");
+        response.setBody("");
+        return;
+    }
+
+    // generate dashboard HTML with session data
+    std::string html =
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head>\n"
+        "    <meta charset=\"UTF-8\">\n"
+        "    <title>Dashboard</title>\n"
+        "    <style>\n"
+        "        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n"
+        "        .container { background: white; padding: 30px; border-radius: 8px; "
+        "box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n"
+        "        h1 { color: #333; }\n"
+        "        .info { background: #f0f7ff; padding: 15px; border-radius: 4px; margin: 20px 0; }\n"
+        "        a { color: #0066cc; text-decoration: none; }\n"
+        "        a:hover { text-decoration: underline; }\n"
+        "        .logout { background: #ff4444; color: white; padding: 10px 20px; "
+        "border-radius: 4px; display: inline-block; margin-top: 20px; }\n"
+        "    </style>\n"
+        "</head>\n"
+        "<body>\n"
+        "    <div class=\"container\">\n"
+        "        <h1>Welcome, " + session->username + "!</h1>\n"
+        "        <div class=\"info\">\n"
+        "            <p><strong>Session ID:</strong> " + sessionId + "</p>\n"
+        "            <p><strong>Logged in at:</strong> " + std::string(std::ctime(&session->createdAt)) + "</p>\n"
+        "        </div>\n"
+        "        <p>You are successfully logged in.</p>\n"
+        "        <a href=\"/logout\" class=\"logout\">Logout</a>\n"
+        "    </div>\n"
+        "</body>\n"
+        "</html>";
+
+    response.setStatus(200);
+    response.setHeader("Content-Type", "text/html");
+    response.setBody(html);
+}
+
+void Server::_handleLogout(const Request& request, Response& response, const ServerConfig& config)
+{
+    (void)config;
+
+    std::string sessionId = _getSessionIdFromRequest(request);
+
+    if (!sessionId.empty())
+    {
+        _sessionManager.destroySession(sessionId);
+        logMessage("Session destroyed: " + sessionId);
+    }
+
+    // clear cookie by setting expiry in the past
+    response.setStatus(302);
+    response.setHeader("Set-Cookie", "sessionId=; Path=/; Max-Age=0; HttpOnly");
+    response.setHeader("Location", "/login");
+    response.setHeader("Content-Length", "0");
+    response.setBody("");
 }
