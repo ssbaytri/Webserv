@@ -17,7 +17,7 @@ struct LocationConfig {
     size_t clientMaxBodySize;                   // Optional override
     bool requireAuth;
     
-    LocationConfig() : autoindex(false), clientMaxBodySize(0) {}
+    LocationConfig() : autoindex(false), clientMaxBodySize(0), requireAuth(false) {}
 };
 
 // Server block configuration

@@ -371,6 +371,13 @@ void Server::_handleGET(const Request& request, Response& response, const Server
 
 void Server::_handlePOST(const Request& request, Response& response, const ServerConfig& config){
     bool isChunked = request.getTransferEncoding() == "chunked";
+    std::string uri = request.getUri();
+
+    if (uri == "/login")
+    {
+        _handleLogin(request, response, config);
+        return ;
+    }
 
     if (request.getContentLength() == 0 && !isChunked)
     {
@@ -378,7 +385,7 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
         return ;
     }
     
-    const LocationConfig* location = _findLocation(request.getUri(), config);
+    const LocationConfig* location = _findLocation(uri, config);
 
     if (location && !location->cgiPass.empty())
     {
@@ -386,7 +393,7 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
         if (location && !location->root.empty())
             root = location->root;
 
-        std::string file_path = root + request.getUri();
+        std::string file_path = root + uri;
         std::string extension = getFileExtension(file_path);
         std::map<std::string, std::string>::const_iterator it = location->cgiPass.find(extension);
         if (it != location->cgiPass.end())
@@ -423,7 +430,6 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
         }
         
         // Determine upload directory from URI
-        std::string uri = request.getUri();
         std::string uploadDir = root + uri;
         
         // Ensure trailing slash
@@ -543,7 +549,14 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
     }
 
     if (method == "GET")
-        _handleGET(request, response, config);
+    {
+        if (uri == "/dashboard")
+            _handleDashboard(request, response, config);
+        else if (uri == "/logout")
+            _handleLogout(request, response, config);
+        else
+            _handleGET(request, response, config);
+    }
     else if (method == "POST")
         _handlePOST(request, response, config);
     else if (method == "DELETE")
@@ -662,6 +675,8 @@ void Server::run() {
 
     while (!g_shutdown)
     {
+        _sessionManager.cleanExpiredSessions(60 * 30);
+
         int pollCount = poll(&_pollFds[0], _pollFds.size(), TIMEOUT);
 
         if (pollCount < 0)
