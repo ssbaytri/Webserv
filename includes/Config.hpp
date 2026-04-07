@@ -15,9 +15,8 @@ struct LocationConfig {
     std::string redirect;                       // "/new-page" (for redirects)
     std::map<std::string, std::string> cgiPass; // {".php": "/usr/bin/php-cgi"}
     size_t clientMaxBodySize;                   // Optional override
-    bool requireAuth;
     
-    LocationConfig() : autoindex(false), clientMaxBodySize(0), requireAuth(false) {}
+    LocationConfig() : autoindex(false), clientMaxBodySize(0) {}
 };
 
 // Server block configuration

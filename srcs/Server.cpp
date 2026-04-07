@@ -256,21 +256,6 @@ void Server::_handleGET(const Request& request, Response& response, const Server
         }
     }
 
-    if (location && location->requireAuth)
-    {
-        std::string sessionId = _getSessionIdFromRequest(request);
-        SessionData* session = _sessionManager.getSession(sessionId);
-
-        if (!session)
-        {
-            response.setStatus(302);
-            response.setHeader("Location", "/login");
-            response.setHeader("Content-Length", "0");
-            response.setBody("");
-            return;
-        }
-    }
-
     if (uri == "/login")
     {
         std::string content = readFile(config.root + "/login.html");
@@ -373,12 +358,6 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
     bool isChunked = request.getTransferEncoding() == "chunked";
     std::string uri = request.getUri();
 
-    if (uri == "/login")
-    {
-        _handleLogin(request, response, config);
-        return ;
-    }
-
     if (request.getContentLength() == 0 && !isChunked)
     {
         _setErrorResponse(response, 400, config);
@@ -414,6 +393,12 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
         return;
     }
     
+    if (uri == "/login")
+    {
+        _handleLogin(request, response, config);
+        return ;
+    }
+
     if (request.isMultipartUpload()) {
         std::string fileName = request.getUploadedFileName();
         std::string fileContent = request.getUploadedFileContent();

@@ -106,10 +106,6 @@ bool Config::_parseLocationBlock(std::ifstream& file, LocationConfig& location) 
                 location.index.push_back(tokens[i]);
             }
         }
-        else if (tokens[0] == "requires_auth" && tokens.size() >= 2)
-        {
-            location.requireAuth = (tokens[1] == "on");
-        }
     }
     
     return false;  // Unexpected end of file
