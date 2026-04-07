@@ -1,0 +1,84 @@
+/* Reset */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Background */
+  body {
+	min-height: 100vh;
+	background: linear-gradient(135deg, #667eea, #764ba2);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+  }
+  
+  /* Center container */
+  .container {
+	padding: 20px;
+	width: 100%;
+	display: flex;
+	justify-content: center;
+  }
+  
+  /* Glass card */
+  .card {
+	max-width: 400px;
+	width: 100%;
+	padding: 30px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.15);
+	backdrop-filter: blur(10px);
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+	text-align: center;
+	color: white;
+  }
+  
+  /* Text */
+  .card h1 {
+	margin-bottom: 10px;
+	font-size: 2rem;
+  }
+  
+  .card p {
+	opacity: 0.9;
+	margin-bottom: 20px;
+  }
+  
+  /* Button */
+  button {
+	padding: 12px 24px;
+	border: none;
+	border-radius: 30px;
+	background: white;
+	color: #764ba2;
+	font-size: 1rem;
+	cursor: pointer;
+	transition: all 0.3s ease;
+  }
+  
+  button:hover {
+	transform: translateY(-3px);
+	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  }
+  
+  /* Message */
+  #message {
+	display: block;
+	margin-top: 15px;
+	font-size: 0.9rem;
+	opacity: 0.85;
+  }
+  
+  /* Responsive */
+  @media (max-width: 480px) {
+	.card {
+	  padding: 20px;
+	}
+  
+	.card h1 {
+	  font-size: 1.6rem;
+	}
+  }
