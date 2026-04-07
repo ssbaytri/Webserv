@@ -6,9 +6,25 @@
 #include <unistd.h>
 #include <dirent.h>
 
-#define COLOR_ORANGE "\033[38;5;208m"
-#define COLOR_RED "\033[31m"
-#define COLOR_RESET "\033[0m"
+// --- ANSI Escape Codes ---
+#define COLOR_RESET   "\033[0m"
+#define COLOR_BOLD    "\033[1m"
+#define COLOR_DIM     "\033[2m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN    "\033[36m"
+
+static std::string getTimestamp()
+{
+    char buffer[20];
+    std::time_t now = std::time(NULL);
+    std::tm* timeinfo = std::localtime(&now);
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", timeinfo);
+    return std::string(buffer);
+}
 
 std::string intToString(int num) {
     std::stringstream ss;
@@ -16,12 +32,58 @@ std::string intToString(int num) {
     return ss.str();
 }
 
-void logMessage(const std::string& message) {
-    std::cout << COLOR_ORANGE << "[INFO] " << message << COLOR_RESET << std::endl;
+void logMessage(const std::string& message)
+{
+    std::string timestamp = getTimestamp();
+    std::string icon = "ℹ️";
+    std::string prefixColor = COLOR_BLUE;
+
+    // --- Smart Heuristics ---
+    // Automatically detect what the server is doing based on the string content!
+    
+    if (message.find("GET ") != std::string::npos || 
+        message.find("POST ") != std::string::npos || 
+        message.find("DELETE ") != std::string::npos) {
+        icon = "📥"; // Incoming request
+        prefixColor = COLOR_CYAN;
+    } 
+    else if (message.find("HTTP/1.1 2") != std::string::npos || 
+             message.find("HTTP/1.1 3") != std::string::npos) {
+        icon = "📤"; // Outgoing success response
+        prefixColor = COLOR_GREEN;
+    }
+    else if (message.find("HTTP/1.1 4") != std::string::npos || 
+             message.find("HTTP/1.1 5") != std::string::npos) {
+        icon = "📤"; // Outgoing error response
+        prefixColor = COLOR_YELLOW;
+    }
+    else if (message.find("connection") != std::string::npos || 
+             message.find("accept") != std::string::npos ||
+             message.find("client") != std::string::npos) {
+        icon = "🔗"; // Connection events
+        prefixColor = COLOR_MAGENTA;
+    }
+    else if (message.find("listen") != std::string::npos || 
+             message.find("start") != std::string::npos ||
+             message.find("Server") != std::string::npos) {
+        icon = "🚀"; // Boot up events
+        prefixColor = COLOR_GREEN;
+    }
+
+    // Print the stylish log
+    std::cout << COLOR_DIM << "[" << timestamp << "] " << COLOR_RESET
+              << prefixColor << COLOR_BOLD << icon << " [INFO] " << COLOR_RESET 
+              << message << std::endl;
 }
 
-void logError(const std::string& error) {
-    std::cerr << COLOR_RED << "[ERROR] " << error << COLOR_RESET << std::endl;
+void logError(const std::string& error)
+{
+    std::string timestamp = getTimestamp();
+    
+    // Print the stylish error
+    std::cerr << COLOR_DIM << "[" << timestamp << "] " << COLOR_RESET
+              << COLOR_RED << COLOR_BOLD << "✖️ [ERROR] " << COLOR_RESET 
+              << COLOR_RED << error << COLOR_RESET << std::endl;
 }
 
 std::string	toLowerCase(const std::string& str)
