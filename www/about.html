@@ -1,11 +1,229 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>About - webserv</title>
+    <meta charset="UTF-8">
+    <title>About | Webserv 42 Project</title>
+
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #111827;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #020617, #0f172a, #1e1b4b);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 900px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        h1 span {
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 50px;
+            text-align: left;
+        }
+
+        .card {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(31, 41, 55, 0.9);
+            border-color: rgba(56, 189, 248, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.1);
+        }
+
+        .card h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .card ul {
+            margin: 15px 0 0 0;
+            padding-left: 20px;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .card li {
+            margin-bottom: 8px;
+        }
+
+        .card li strong {
+            color: var(--text);
+        }
+
+        .links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .links a {
+            padding: 12px 24px;
+            border-radius: 12px;
+            background: rgba(2, 6, 23, 0.5);
+            color: var(--text);
+            text-decoration: none;
+            border: 1px solid #1f2933;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+        }
+
+        .links a:hover {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--accent);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        footer {
+            margin-top: 50px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
+
 <body>
-    <h1>About webserv</h1>
-    <p>This is a custom HTTP server built in C++98 for the 42 curriculum.</p>
-    <p><a href="/">Back to home</a></p>
+    <div class="container">
+        <h1>About <span>Webserv</span></h1>
+        <p class="subtitle">
+            An exploration into the mechanics of HTTP.<br>
+            Written entirely in C++98 using strict non-blocking I/O.
+        </p>
+
+        <section class="content-grid">
+            <div class="card">
+                <h3>The Mission</h3>
+                <p>
+                    Webserv is a rigorous 42 Network project designed to challenge our understanding of network programming. 
+                    The goal is to write a fully functioning HTTP server from scratch, simulating the core features of NGINX without relying on modern frameworks.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Core Mechanics</h3>
+                <p>
+                    Built around the power of multiplexing (using <code>select</code>, <code>poll</code>, <code>epoll</code>, or <code>kqueue</code>), the server relies on a single-threaded event loop. It handles everything strictly through non-blocking I/O, ensuring that a slow client never stalls the server.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>Features Supported</h3>
+                <ul>
+                    <li><strong>HTTP/1.1 Compliant:</strong> GET, POST, and DELETE methods.</li>
+                    <li><strong>Configuration:</strong> Advanced server block parsing similar to NGINX configurations.</li>
+                    <li><strong>Virtual Hosting:</strong> Multiple servers on the same or different host:ports.</li>
+                    <li><strong>Static & Dynamic:</strong> Directory listing, static file serving, and dynamic Common Gateway Interface (CGI) execution.</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>Under The Hood</h3>
+                <ul>
+                    <li><strong>Language:</strong> Strictly C++98 compliant.</li>
+                    <li><strong>Memory:</strong> Complete absence of memory leaks and strict memory management.</li>
+                    <li><strong>Networking:</strong> Custom socket binding, listening, and robust chunked request parsing.</li>
+                    <li><strong>Resilience:</strong> Extensive error handling for HTTP statuses and malformed requests.</li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="links">
+            <a href="/">← Back to Home</a>
+            <a href="https://github.com/ssbaytri/Webserv" target="_blank">View on GitHub</a>
+        </div>
+
+        <footer>
+            Webserv • 42 Network • Built with C++
+        </footer>
+    </div>
 </body>
 </html>

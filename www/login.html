@@ -1,39 +1,224 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Login | Webserv</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
-        h1 { color: #333; text-align: center; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd;
-            border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #0066cc; color: white;
-            border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #0052a3; }
-        .error { background: #ffe0e0; color: #cc0000; padding: 10px;
-            border-radius: 4px; margin-bottom: 15px; text-align: center; }
+        :root {
+            --bg: #0f172a;
+            --card: #111827;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --error: #ef4444;
+            --error-glow: rgba(239, 68, 68, 0.4);
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #020617, #0f172a, #1e1b4b);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+
+        .card {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.05);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 2rem;
+            color: #fff;
+        }
+
+        h2 span {
+            color: var(--accent);
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        p.subtitle {
+            color: var(--muted);
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        /* Error Message Styling */
+        .error-message {
+            display: none; /* Hidden by default */
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: left;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.05);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .error-message.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .error-message::before {
+            content: '⚠️';
+            font-size: 1.1rem;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+            background: rgba(2, 6, 23, 0.9);
+        }
+
+        /* Input error state styling */
+        .has-error .form-control {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+        .has-error .form-control:focus {
+            border-color: var(--error);
+            box-shadow: 0 0 15px var(--error-glow);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: var(--accent);
+            color: #0f172a;
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 25px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: #fff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Login</h1>
-        <!-- show error message if login failed -->
-        <div id="error" class="error" style="display:none">
-            Invalid username or password
+        <div class="card">
+            <h2>Sign In to <span>Webserv</span></h2>
+            <p class="subtitle">Access your secure HTTP session</p>
+
+            <!-- Hidden by default, shown via JS if URL has ?error=1 -->
+            <div id="error-box" class="error-message">
+                Invalid username or password.
+            </div>
+
+            <form action="/login" method="POST" id="login-form">
+                <div class="form-group" id="user-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" required autocomplete="off">
+                </div>
+                
+                <div class="form-group" id="pass-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required>
+                </div>
+
+                <button type="submit" class="btn">Authenticate</button>
+            </form>
+
+            <a href="/" class="back-link">← Return to Home</a>
         </div>
-        <form method="POST" action="/login">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
     </div>
+
+    <!-- Script to check for errors in URL -->
     <script>
-        // show error if ?error=1 in URL
-        if (window.location.search.includes('error=1'))
-            document.getElementById('error').style.display = 'block';
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('error')) {
+                // Show the error banner
+                document.getElementById('error-box').classList.add('show');
+                // Highlight the inputs in red
+                document.getElementById('user-group').classList.add('has-error');
+                document.getElementById('pass-group').classList.add('has-error');
+                
+                // Optional: clean up the URL so the error disappears on page refresh
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
     </script>
 </body>
 </html>
