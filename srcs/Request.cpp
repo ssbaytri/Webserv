@@ -29,7 +29,7 @@ bool Request::parseRequestLine(const std::string& rawRequest)
     }
     
     std::string requestLine = rawRequest.substr(0, lineEnd);
-    std::cout << "Request Line: [" << requestLine << "]" << std::endl;
+    // std::cout << "Request Line: [" << requestLine << "]" << std::endl;
     
     size_t firstSpace = requestLine.find(' ');
     if (firstSpace == std::string::npos) {
@@ -38,7 +38,7 @@ bool Request::parseRequestLine(const std::string& rawRequest)
     }
     
     _method = requestLine.substr(0, firstSpace);
-    std::cout << "Method: [" << _method << "]" << std::endl;
+    // std::cout << "Method: [" << _method << "]" << std::endl;
     
     size_t secondSpace = requestLine.find(' ', firstSpace + 1);
     if (secondSpace == std::string::npos) {
@@ -57,11 +57,11 @@ bool Request::parseRequestLine(const std::string& rawRequest)
     else
         _queryString = "";
 
-    std::cout << "URI: [" << _uri << "]" << std::endl;
-    std::cout << "QuertString: [" << _queryString << "]" << std::endl;
+    // std::cout << "URI: [" << _uri << "]" << std::endl;
+    // std::cout << "QuertString: [" << _queryString << "]" << std::endl;
     
     _version = requestLine.substr(secondSpace + 1);
-    std::cout << "Version: [" << _version << "]" << std::endl;
+    // std::cout << "Version: [" << _version << "]" << std::endl;
     
     if (_method.empty() || _uri.empty() || _version.empty()) {
         logError("Empty field in request line");
@@ -99,12 +99,12 @@ bool Request::parseHeaders(const std::string& rawRequest)
         if (line_end == pos)
         {
             _body_start = pos + 2;
-            std::cout << "End of headers found at position " << _body_start << std::endl;
+            // std::cout << "End of headers found at position " << _body_start << std::endl;
             return true;
         }
 
         std::string line = rawRequest.substr(pos, line_end - pos);
-        std::cout << "Parsing header line: [" << line << "]" << std::endl;
+        // std::cout << "Parsing header line: [" << line << "]" << std::endl;
 
         size_t colon_pos = line.find(':');
         if (colon_pos == std::string::npos)
@@ -164,10 +164,6 @@ bool Request::parse(const std::string& rawRequest)
         }
         _body = rawRequest.substr(_body_start, contentLength);
     }
-
-    std::cout << "Host: " << host << std::endl;
-    std::cout << "Content-Length: " << contentLength << std::endl;
-    std::cout << "Content-type: " << contentType << std::endl;
 
     if (isMultipartUpload()) {
         if (!_parseMultipart()) {
