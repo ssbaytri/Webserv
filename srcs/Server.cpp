@@ -395,6 +395,11 @@ void Server::_handlePOST(const Request& request, Response& response, const Serve
     
     if (uri == "/login")
     {
+        if (!request.isUrlEncodedForm())
+        {
+            _setErrorResponse(response, 415, config);
+            return ;
+        }
         _handleLogin(request, response, config);
         return ;
     }
@@ -823,6 +828,7 @@ void Server::_setErrorResponse(Response& response, int statusCode, const ServerC
         case 404: defaultBody = "<html><body><h1>404 Not Found</h1></body></html>"; break;
         case 405: defaultBody = "<html><body><h1>405 Method Not Allowed</h1></body></html>"; break;
         case 413: defaultBody = "<html><body><h1>413 Payload Too Large</h1></body></html>"; break;
+        case 415: defaultBody = "<html><body><h1>415 Unsupported Media Type</h1><p>Login requires form-urlencoded data.</p></body></html>"; break;
         case 500: defaultBody = "<html><body><h1>500 Internal Server Error</h1></body></html>"; break;
         case 501: defaultBody = "<html><body><h1>501 Not Implemented</h1></body></html>"; break;
         default:  defaultBody = "<html><body><h1>Error</h1></body></html>"; break;
