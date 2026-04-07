@@ -546,6 +546,13 @@ void Server::_processRequest(Client* client, const ServerConfig& config)
         _handlePOST(request, response, config);
     else if (method == "DELETE")
         _handleDELETE(request, response, config);
+
+    if (response.getStatusCode() >= 400)
+    {
+        client->setShouldClose(true);
+        response.setHeader("Connection", "close");
+    }
+    
     client->setResponse(response.toString());
 }
 
